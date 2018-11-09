@@ -1,5 +1,5 @@
 """
-Fixed parameters and strings
+Fixed parameters and notational conveniences
 """
 import enum
 

@@ -187,6 +187,8 @@ class StrokeCenter:
             is not None, it will be treated as the n draws from a uniform [0,1]
             RV to set the door to puncture time without a new draw.
         '''
+        if self.center_type is CenterType.PRIMARY:
+            raise ValueError("Can't set door to puncture on primary center.")
         if not with_uncertainty and perf_level is not None:
             raise ValueError('preset level cannot be used without uncertainty')
         if with_uncertainty:
