@@ -29,3 +29,11 @@ class StrategyKind(enum.IntEnum):
     PRIMARY = 0
     COMPREHENSIVE = 1
     DRIP_AND_SHIP = 2
+
+
+def time_limit_tpa():
+    return 270
+
+
+def time_limit_evt():
+    return 360

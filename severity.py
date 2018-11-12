@@ -1,6 +1,7 @@
 """Flexible characterization of stroke severity."""
 import abc
 import numpy as np
+import constants
 
 
 class Severity(abc.ABC):
@@ -17,21 +18,84 @@ class Severity(abc.ABC):
         """
         pass
 
+    @property
     @abc.abstractmethod
-    def get_NIHSS(self):
+    def NIHSS(self):
         """
         Get the NIHSS score equivalent to this stroke severity.
         """
         pass
 
+    def p_good_outcome_post_evt_success(self, time_onset_reperfusion):
+        '''
+        Saver et al. JAMA 2016, Schlemm analysis
+        Note: had to redo the regression
+        '''
+        beta = (-0.00879544 - 9.01419716e-05 * time_onset_reperfusion)
+        return np.exp(beta * self.NIHSS)
+
+    def p_good_outcome_no_reperfusion(self):
+        '''
+        Schlemm, used a few different sources for points on the piecewise
+        linear regression (3 distinct points: 0.05 at NIHSS 20, 1 at NIHSS 0,
+        and 0.3 at for an NIHSS at 16)
+        '''
+        if self.NIHSS >= 20:
+            return 0.05
+        else:
+            return (-0.0464 * self.NIHSS) + 1.0071
+
+    def p_good_outcome_ais_no_lvo(self, time_onset_tpa):
+        '''
+        * Note that if your time from onset to tPA is > 270, you won't
+            actually get tPA.
+        Schelmm analysis, extracted from a few sources and assumed that
+        there is interaction between treatment effect of thrombolysis and
+        stroke severity
+        Didn't have data for odds ratio with time for patients without LVO,
+        but there is no consistent evidence that it differs for patients
+        with and without LVO
+        '''
+        baseline_prob = 0.001 * self.NIHSS**2 - 0.0615 * self.NIHSS + 1
+
+        odds_ratio = -0.0031 * time_onset_tpa + 2.068
+        # if baseline_prob == 1.0:
+        #     baseline_prob = 0.999999999999
+        baseline_prob_to_odds = baseline_prob / (1 - baseline_prob)
+        new_odds = baseline_prob_to_odds * odds_ratio
+        adjusted_prob = new_odds / (1 + new_odds)
+
+        return np.where(time_onset_tpa < constants.time_limit_tpa,
+                        adjusted_prob, baseline_prob)
+
+    def p_reperfusion_endovascular(self):
+        # Saver et al. JAMA 2016, Schlemm analysis
+        return 0.71
+
+    def p_early_reperfusion_thrombolysis(self, time_to_groin):
+        return 0.18 * np.minimum(70, time_to_groin) / 70
+
 
 class RACE(Severity):
     """Severity represented by the RACE score."""
 
-    def __init__(self, score):
+    @property
+    def NIHSS(self):
+        return self._NIHSS
+
+    @property
+    def score(self):
+        return self._score
+
+    @score.setter
+    def set_score(self, score):
         if score < 0 or score > 9:
             raise ValueError(f'Invalid RACE score {score}')
-        self.score
+        self._score = score
+        self._NIHSS = self._get_NIHSS()
+
+    def __init__(self, score):
+        self.score = score
 
     def prob_LVO_given_AIS(self, n=1, add_uncertainty=False):
         """
@@ -51,7 +115,7 @@ class RACE(Severity):
 
         return p_lvo
 
-    def get_NIHSS(self):
+    def _get_NIHSS(self):
         """
         Get the NIHSS score equivalent to this stroke severity.
         Perez de la Ossa et al. Stroke 2014, Schlemm analysis
@@ -69,11 +133,23 @@ class NIHSS(Severity):
         converting to RACE.
     """
 
-    def __init__(self, score):
+    @property
+    def NIHSS(self):
+        return self.score
+
+    @property
+    def score(self):
+        return self._score
+
+    @score.setter
+    def set_score(self, score):
         if score < 0 or score > 42:
             raise ValueError(f'Invalid NIHSS score {score}')
         self.score = score
         self._get_RACE()
+
+    def __init__(self, score):
+        self.score = score
 
     def _get_RACE(self):
         if self.score <= 1:
@@ -89,9 +165,3 @@ class NIHSS(Severity):
             RACE score first via linear regression.
         """
         return self._RACE.prob_LVO_given_AIS(n, add_uncertainty)
-
-    def get_NIHSS(self):
-        """
-        Get the NIHSS score
-        """
-        return self.score
