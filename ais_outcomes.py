@@ -84,13 +84,18 @@ class IschemicModel:
         )
 
         if onset_to_evt is None:
+            # No EVT, outcome just depends on time to tPA
             return baseline_p_good
 
         severity = self.patient.severity
         p_rep_endo = severity.p_reperfusion_endovascular()
         p_reperfused = (self.times.p_lvo * p_rep_endo)
-        p_good_post_evt = severity.p_good_outcome_post_evt_success(
-            onset_to_evt
+        p_good_post_evt = np.where(
+            onset_to_evt < constants.time_limit_evt(),
+            severity.p_good_outcome_post_evt_success(
+                onset_to_evt
+            ),
+            baseline_p_good
         )
         higher_p_good = np.maximum(p_good_post_evt, baseline_p_good)
 
