@@ -1,14 +1,8 @@
 """
 Strategies with associated stroke centers
 """
-import enum
 import stroke_center as sc
-
-
-class StrategyKind(enum.IntEnum):
-    PRIMARY = 0
-    COMPREHENSIVE = 1
-    DRIP_AND_SHIP = 2
+from constants import StrategyKind
 
 
 class Strategy:

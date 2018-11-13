@@ -5,13 +5,15 @@ Model short term outcome distribution for a patient under all available
 import numpy as np
 import collections
 import constants
+from constants import StrategyKind
 
 
 Outcome = collections.namedtuple('Outcome',
-                                 ['p_good', 'p_tpa', 'p_evt', 'p_transfer'])
+                                 ['p_good', 'p_tpa', 'p_evt', 'p_transfer',
+                                  'strategy_kind'])
 Outcome.__doc__ == """
 Stores probability of a good outcome, probability of tPA, probability of EVT,
-    and probability of transfer for a class of stratgies. Entries are
+    and probability of transfer for a class of strategies. Entries are
     arrays with rows for model runs and columns for destination hospitals or
     lower-dimensional representation that can be broadcast to the full array
     (in the case where the value is the same for all hospitals and/or model
@@ -38,7 +40,7 @@ class IschemicModel:
         p_evt = 0
         p_transfer = 0
 
-        return Outcome(p_good, p_tpa, p_evt, p_transfer)
+        return Outcome(p_good, p_tpa, p_evt, p_transfer, StrategyKind.PRIMARY)
 
     def run_comprehensives(self):
         """
@@ -53,7 +55,8 @@ class IschemicModel:
                          self.times.p_lvo, 0)
         p_transfer = 0
 
-        return Outcome(p_good, p_tpa, p_evt, p_transfer)
+        return Outcome(p_good, p_tpa, p_evt, p_transfer,
+                       StrategyKind.COMPREHENSIVE)
 
     def run_drip_and_ship(self):
         """
@@ -72,7 +75,8 @@ class IschemicModel:
         #   decision time.
         p_transfer = 1
 
-        return Outcome(p_good, p_tpa, p_evt, p_transfer)
+        return Outcome(p_good, p_tpa, p_evt, p_transfer,
+                       StrategyKind.DRIP_AND_SHIP)
 
     def _get_p_good(self, onset_to_tpa, onset_to_evt=None):
         """

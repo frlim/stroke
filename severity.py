@@ -75,6 +75,45 @@ class Severity(abc.ABC):
     def p_early_reperfusion_thrombolysis(self, time_to_groin):
         return 0.18 * np.minimum(70, time_to_groin) / 70
 
+    def break_up_ais_patients(self, p_good_outcome):
+        """
+        Generate a state matrix for AIS patients given an array of
+            probabilities of good outcomes.
+        From pooled meta-analysis in supplement of Saver et al. 2016, we
+        break up the good and bad outcome (mRS 0 - 2 and 3 - 5 respectively)
+        patients into proportions independent of time to treatment
+        However, we consider the proportion of patients that die to be a
+        constant regardless of time to treatment
+        Probaility of mortality: 0.171361502
+        Probabilities of mRS 0 - 2: 0.205627706, 0.341991342, 0.452380952
+        Probabilities of mRS 3 - 5: 0.35678392, 0.432160804, 0.211055276
+        """
+        (n_samples, n_hospitals) = p_good_outcome.shape
+        n_states = constants.States.NUMBER_OF_STATES
+        states = np.zeros((n_samples, n_hospitals, n_states))
+
+        # Assume that probability of death is always constant
+        # Stratified by NIHSS, ask Dr. Schwamm to get raw data for a continuous
+        # approach
+        states[:, :, constants.States.MRS_6] = np.where(
+            self.NIHSS < 7, 0.042,
+            np.where(self.NIHSS < 13, 0.139,
+                     np.where(self.NIHSS < 21, 0.316, 0.535))
+        )
+
+        # Good outcomes
+        states[:, :, constants.States.MRS_0] = 0.205627706 * p_good_outcome
+        states[:, :, constants.States.MRS_1] = 0.341991342 * p_good_outcome
+        states[:, :, constants.States.MRS_2] = 0.452380952 * p_good_outcome
+
+        # Bad outcomes
+        p_bad = 1 - p_good_outcome - states[:, :, constants.States.MRS_6]
+        states[:, :, constants.States.MRS_3] = 0.35678392 * p_bad
+        states[:, :, constants.States.MRS_4] = 0.432160804 * p_bad
+        states[:, :, constants.States.MRS_5] = 0.211055276 * p_bad
+
+        return states
+
 
 class RACE(Severity):
     """Severity represented by the RACE score."""

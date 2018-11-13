@@ -37,3 +37,37 @@ def time_limit_tpa():
 
 def time_limit_evt():
     return 360
+
+
+HAZARDS_MORTALITY = {
+    States.GEN_POP: 1,
+    States.MRS_0: 1.53,
+    States.MRS_1: 1.52,
+    States.MRS_2: 2.17,
+    States.MRS_3: 3.18,
+    States.MRS_4: 4.55,
+    States.MRS_5: 6.55
+}
+
+
+def hazard_mort(mrs):
+    '''
+    Again keep it as a function so that it's easier to do sensitivity analyses
+    later on.
+    '''
+    return HAZARDS_MORTALITY[mrs]
+
+
+UTILITIES = {
+    States.GEN_POP: 1.00,
+    States.MRS_0: 1.00,
+    States.MRS_1: 0.84,
+    States.MRS_2: 0.78,
+    States.MRS_3: 0.71,
+    States.MRS_4: 0.44,
+    States.MRS_5: 0.18
+}
+
+
+def utilities_mrs(mrs):
+    return UTILITIES[mrs]
