@@ -10,7 +10,7 @@ from constants import StrategyKind
 
 Outcome = collections.namedtuple('Outcome',
                                  ['p_good', 'p_tpa', 'p_evt', 'p_transfer',
-                                  'strategy_kind'])
+                                  'strategies'])
 Outcome.__doc__ == """
 Stores probability of a good outcome, probability of tPA, probability of EVT,
     and probability of transfer for a class of strategies. Entries are
@@ -19,6 +19,51 @@ Stores probability of a good outcome, probability of tPA, probability of EVT,
     (in the case where the value is the same for all hospitals and/or model
     runs).
 """
+
+
+class Outcome:
+    """
+    Stores probability of a good outcome, probability of tPA, probability of
+        EVT, and probability of transfer for a class of strategies. Entries are
+        arrays with rows for model runs and columns for destination hospitals
+        or lower-dimensional representation that can be broadcast to the full
+        array (in the case where the value is the same for all hospitals and/or
+        model runs).
+    """
+
+    @property
+    def shape(self):
+        """Shape of outcome (number of model runs, number of strategies)"""
+        return self.p_good.shape
+
+    def __init__(self, p_good, p_tpa, p_evt, p_transfer, strategies):
+        """
+        Store outcomes for a set of strategies. All probabilities should
+            have the shape (number of model runs, number of strategies)
+            or be broadcastable to it.
+        """
+        self.p_good = p_good
+        self.p_tpa = p_tpa
+        self.p_evt = p_evt
+        self.p_transfer = p_transfer
+        self.strategies = strategies
+
+    def __add__(self, other):
+        """
+        Combine outcomes for multiple sets of strategies
+        """
+        p_good = np.concatenate([self.p_good, other.p_good], axis=1)
+        p_tpa = np.concatenate([self._reshape(self.p_tpa),
+                                other._reshape(other.p_tpa)], axis=1)
+        p_evt = np.concatenate([self._reshape(self.p_evt),
+                                other._reshape(other.p_evt)], axis=1)
+        p_transfer = np.concatenate([self._reshape(self.p_transfer),
+                                     other._reshape(other.p_transfer)], axis=1)
+        strategies = self.strategies + other.strategies
+        return Outcome(p_good, p_tpa, p_evt, p_transfer, strategies)
+
+    def _reshape(self, array):
+        return np.broadcast_to(array, self.shape)
 
 
 class IschemicModel:
@@ -30,6 +75,14 @@ class IschemicModel:
         """
         self.times = times
 
+    def run_all_strategies(self):
+        """Compute outcome for all possible strategies"""
+        primary_outcomes = self.run_primaries()
+        drip_and_ship_outcomes = self.run_drip_and_ship()
+        comprehensive_outcomes = self.run_comprehensives()
+        return (primary_outcomes + drip_and_ship_outcomes +
+                comprehensive_outcomes)
+
     def run_primaries(self):
         """
         Compute outcome for going only to the primary center, for each
@@ -39,8 +92,9 @@ class IschemicModel:
         p_tpa = 1
         p_evt = 0
         p_transfer = 0
+        strategies = self.times.get_strategies(StrategyKind.PRIMARY)
 
-        return Outcome(p_good, p_tpa, p_evt, p_transfer, StrategyKind.PRIMARY)
+        return Outcome(p_good, p_tpa, p_evt, p_transfer, strategies)
 
     def run_comprehensives(self):
         """
@@ -55,8 +109,9 @@ class IschemicModel:
                          self.times.p_lvo, 0)
         p_transfer = 0
 
-        return Outcome(p_good, p_tpa, p_evt, p_transfer,
-                       StrategyKind.COMPREHENSIVE)
+        strategies = self.times.get_strategies(StrategyKind.COMPREHENSIVE)
+
+        return Outcome(p_good, p_tpa, p_evt, p_transfer, strategies)
 
     def run_drip_and_ship(self):
         """
@@ -75,23 +130,22 @@ class IschemicModel:
         #   decision time.
         p_transfer = 1
 
-        return Outcome(p_good, p_tpa, p_evt, p_transfer,
-                       StrategyKind.DRIP_AND_SHIP)
+        strategies = self.times.get_strategies(StrategyKind.DRIP_AND_SHIP)
+
+        return Outcome(p_good, p_tpa, p_evt, p_transfer, strategies)
 
     def _get_p_good(self, onset_to_tpa, onset_to_evt=None):
         """
         Get the probability of a good outcome given arrays of onset to
             treatment times.
         """
-        baseline_p_good = self.patient.severity.p_good_outcome_ais_no_lvo(
-            onset_to_tpa
-        )
+        severity = self.times.patient.severity
+        baseline_p_good = severity.p_good_outcome_ais_no_lvo(onset_to_tpa)
 
         if onset_to_evt is None:
             # No EVT, outcome just depends on time to tPA
             return baseline_p_good
 
-        severity = self.patient.severity
         p_rep_endo = severity.p_reperfusion_endovascular()
         p_reperfused = (self.times.p_lvo * p_rep_endo)
         p_good_post_evt = np.where(

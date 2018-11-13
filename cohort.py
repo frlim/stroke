@@ -19,12 +19,12 @@ class Population:
     def __init__(self, patient, ais_outcomes, horizon=None):
         """
         Initialize a cohort for a particular patient with given AIS outcomes
-            for a particular kind of strategy.
+            for a particular set of strategies.
         """
         self.start_age = patient.age
         self.sex = patient.sex
         self.severity = patient.severity
-        self.strategy_kind = ais_outcomes.strategy_kind
+        self.strategies = ais_outcomes.strategies
         self.horizon = horizon
         self._break_into_states(ais_outcomes)
 
@@ -54,11 +54,9 @@ class Population:
         # Get the mRS breakdown for AIS patients
         ais_states = self.severity.break_up_ais_patients(ais_outcomes.p_good)
 
-        # Remember to adjust for population of ischemic patients
-        ais_states *= pop_ischemic
-
-        # initialize the global state matrix with AIS patients
-        states = ais_states.copy()
+        # initialize the global state matrix with AIS patients adjusted for
+        #   population of ischemic patients
+        states = ais_states * pop_ischemic
 
         # Now we need the mRS breakdown for patients with hemorrhagic strokes
         # Currently making the conservative estimate that there is no

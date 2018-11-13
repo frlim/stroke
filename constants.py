@@ -39,6 +39,18 @@ def time_limit_evt():
     return 360
 
 
+# PLUMBER Study
+def p_call_is_mimic():
+    # incude TIA
+    return (1635 + 191) / 2402
+
+
+# PLUMBER Study
+def p_call_is_hemorrhagic():
+    # include ICH and SAH
+    return (16 + 85) / 2402
+
+
 HAZARDS_MORTALITY = {
     States.GEN_POP: 1,
     States.MRS_0: 1.53,

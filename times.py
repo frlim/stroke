@@ -4,6 +4,8 @@ Model relevant hospital times for an AIS patient under all available
 """
 import numpy as np
 import stroke_center as sc
+import constants
+import strategy
 
 
 class IschemicTimes:
@@ -46,7 +48,7 @@ class IschemicTimes:
             in the order they appear in self._primaries. Values are NaN if no
             transfer destination exists
         """
-        return self._onset_evt_noship
+        return self._onset_evt_ship
 
     def __init__(self, patient, hospitals, n, add_time_uncertainty,
                  add_lvo_uncertainty, fix_performance=False):
@@ -78,11 +80,38 @@ class IschemicTimes:
         self.p_lvo = patient.severity.prob_LVO_given_AIS(n,
                                                          add_lvo_uncertainty)
 
+        # Initialize empty cache dictionary for Strategy lists
+        self._strategies = {}
+
+    def get_strategies(self, strategy_kind):
+        """
+        Get a list of strategies of the appropriate kind, in the same
+            order the strategies appear in onset to treatment time arrays.
+        """
+        if strategy_kind in self._strategies:
+            return self._strategies[strategy_kind]
+
+        if strategy_kind is constants.StrategyKind.COMPREHENSIVE:
+            constructor = strategy.Strategy.comprehensive
+            hospitals = self._comprehensives
+        elif strategy_kind is constants.StrategyKind.PRIMARY:
+            constructor = strategy.Strategy.primary
+            hospitals = self._primaries
+        elif strategy_kind is constants.StrategyKind.DRIP_AND_SHIP:
+            constructor = strategy.Strategy.drip_and_ship
+            hospitals = self._primaries
+        else:
+            raise ValueError(f'Unrecognized strategy kind {strategy_kind}')
+
+        strategies = [constructor(hospital) for hospital in hospitals]
+        self._strategies[strategy_kind] = strategies
+        return strategies
+
     def _process_hospitals(self, hospitals, n, add_time_uncertainty,
                            fix_performance):
         if fix_performance:
-            dtn_perf = np.random.uniform(0, 1)
-            dtp_perf = np.random.uniform(0, 1)
+            dtn_perf = np.random.uniform(0, 1, n)
+            dtp_perf = np.random.uniform(0, 1, n)
         else:
             dtn_perf = None
             dtp_perf = None
@@ -95,11 +124,12 @@ class IschemicTimes:
                 #   be in self.comprehensives
                 td = hospital.transfer_destination
                 if td is not None:
-                    td.set_door_to_needle(add_time_uncertainty, dtn_perf)
-                    td.set_door_to_puncture(add_time_uncertainty, dtp_perf)
+                    td.set_door_to_needle(n, add_time_uncertainty, dtn_perf)
+                    td.set_door_to_puncture(n, add_time_uncertainty, dtp_perf)
                 primaries.append(hospital)
             elif hospital.center_type is sc.CenterType.COMPREHENSIVE:
-                hospital.set_door_to_puncture(add_time_uncertainty, dtp_perf)
+                hospital.set_door_to_puncture(n, add_time_uncertainty,
+                                              dtp_perf)
                 comprehensives.append(hospital)
         self._primaries = primaries
         self._comprehensives = comprehensives
@@ -109,7 +139,7 @@ class IschemicTimes:
 
     def _compute_onset_needle_comprehensive(self):
         self._onset_needle_comprehensive = self._onset_needle(
-            self.comprehensives
+            self._comprehensives
         )
 
     def _onset_needle(self, hospitals):
@@ -121,7 +151,7 @@ class IschemicTimes:
         time_to_hospital = np.stack(travel)
         dtn = np.stack(dtn, axis=1)
 
-        return self.patient.time_since_symptoms + time_to_hospital + dtn
+        return self.patient.symptom_time + time_to_hospital + dtn
 
     def _compute_onset_evt_noship(self):
         travel = []
@@ -132,7 +162,7 @@ class IschemicTimes:
         time_to_hospital = np.stack(travel)
         dtp = np.stack(dtp, axis=1)
 
-        time = self.patient.time_since_symptoms + time_to_hospital + dtp
+        time = self.patient.symptom_time + time_to_hospital + dtp
         self._onset_evt_noship = time
 
     def _compute_onset_evt_ship(self):
@@ -159,6 +189,6 @@ class IschemicTimes:
         #   cancel out here, so primary DTN doesn't impact drip and ship time
         #   to EVT. (Maybe this should use comp.door_to_needle instead?)
         self._onset_evt_ship = (
-            self.patient.time_since_symptoms + to_primary +
+            self.patient.symptom_time + to_primary +
             door_to_needle + transfer_time + transfer_to_puncture
         )

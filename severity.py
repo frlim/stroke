@@ -15,6 +15,7 @@ class Severity(abc.ABC):
         """
         Get the probability of an LVO under the assumption that the severity
             describes an acute ischemic stroke.
+        Returns a numpy array with shape (n,1)
         """
         pass
 
@@ -65,7 +66,7 @@ class Severity(abc.ABC):
         new_odds = baseline_prob_to_odds * odds_ratio
         adjusted_prob = new_odds / (1 + new_odds)
 
-        return np.where(time_onset_tpa < constants.time_limit_tpa,
+        return np.where(time_onset_tpa < constants.time_limit_tpa(),
                         adjusted_prob, baseline_prob)
 
     def p_reperfusion_endovascular(self):
@@ -127,7 +128,7 @@ class RACE(Severity):
         return self._score
 
     @score.setter
-    def set_score(self, score):
+    def score(self, score):
         if score < 0 or score > 9:
             raise ValueError(f'Invalid RACE score {score}')
         self._score = score
@@ -152,7 +153,7 @@ class RACE(Severity):
             upper = p_lvo_logistic_helper(-2.2067, 0.6925)
             p_lvo = np.random.uniform(lower, upper, n)
 
-        return p_lvo
+        return p_lvo.reshape(-1, 1)
 
     def _get_NIHSS(self):
         """
