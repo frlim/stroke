@@ -2,6 +2,7 @@
 Aggregate model runs and determine optimal strategies
 """
 import functools
+import warnings
 from collections import Counter
 import numpy as np
 
@@ -110,20 +111,7 @@ def get_optimal(data, threshold):
     Given a list of FormattedResults representing strategies for a single
         model run, select the optimal result and return it.
     """
-    # sort inplace by the defined ordering on FormattedResults
-    data.sort()
-
-    # Remove strategies with identical cost and qaly values, keeping the first
-    #   of each according to the ordering on FormattedResults
-    duplicates = []
-    for i, element in enumerate(data[1:]):
-        prev = data[i - 1]
-        if prev.equivalent(element):
-            duplicates.append(i)
-    while duplicates:
-        # Remove duplicates in reverse order
-        index_to_remove = duplicates.pop()
-        del data[index_to_remove]
+    sort_and_remove_duplicates(data)
 
     # Then, iteratively go through dataframe dropping strategies that are
     # dominated; i.e. strategies where the y value is lower than the one
@@ -188,19 +176,36 @@ def get_optimal(data, threshold):
             return this_data.strategy
 
 
+def sort_and_remove_duplicates(data):
+    # sort inplace by the defined ordering on FormattedResults
+    data.sort()
+
+    # Remove strategies with identical cost and qaly values, keeping the first
+    #   of each according to the ordering on FormattedResults
+    duplicates = []
+    for i, element in enumerate(data):
+        if i == 0:
+            continue
+        prev = data[i - 1]
+        if prev.equivalent(element):
+            duplicates.append(i)
+    while duplicates:
+        # Remove duplicates in reverse order
+        index_to_remove = duplicates.pop()
+        # print(f'Removing {index_to_remove}')
+        del data[index_to_remove]
+
+
 def get_icers(data):
-    global IDENTICAL_COUNT
     icers = []
     for i in range(1, len(data)):
         num = data[i].cost - data[i - 1].cost
         den = data[i].qaly - data[i - 1].qaly
         if num == 0.0 and den == 0.0:
-            # raise ValueError('Identical strategies not caught')
+            raise ValueError('Identical strategies not caught')
             icer = 0
         elif den == 0.0:
-            print(f'{data[i].strategy} - {data[i - 1].strategy}')
-            print(f'{data[i].qaly} - {data[i - 1].qaly}')
-            print(f'num = {num}')
+            warnings.warn("Two strategies with exactly equal benefit")
             icer = np.sign(num) * np.Inf
         else:
             icer = num / den

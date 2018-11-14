@@ -70,12 +70,16 @@ class Strategy:
 
     @classmethod
     def primary(cls, center):
+        """Go to only the given primary center"""
         return cls(StrategyKind.PRIMARY, center)
 
     @classmethod
     def comprehensive(cls, center):
+        """Go directly to the given comprehensive center"""
         return cls(StrategyKind.COMPREHENSIVE, center)
 
     @classmethod
     def drip_and_ship(cls, primary):
+        """Go to the given primary center then transfer to designated
+            comprehensive center."""
         return cls(StrategyKind.DRIP_AND_SHIP, primary)
