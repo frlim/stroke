@@ -49,7 +49,7 @@ class Outcome:
         return Outcome(p_good, p_tpa, p_evt, p_transfer, strategies)
 
     def _reshape(self, array):
-        return np.broadcast_to(array, self.shape)
+        return np.broadcast_arrays(array, self.p_good)[0]
 
 
 class IschemicModel:

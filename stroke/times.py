@@ -146,8 +146,8 @@ class IschemicTimes:
         for hospital in hospitals:
             travel.append(hospital.time)
             dtn.append(hospital.door_to_needle)
-        time_to_hospital = np.stack(travel)
-        dtn = np.stack(dtn, axis=1)
+        time_to_hospital = np.hstack(travel)
+        dtn = np.dstack(dtn)[0]
 
         return self.patient.symptom_time + time_to_hospital + dtn
 
@@ -157,8 +157,8 @@ class IschemicTimes:
         for comp in self._comprehensives:
             travel.append(comp.time)
             dtp.append(comp.door_to_puncture)
-        time_to_hospital = np.stack(travel)
-        dtp = np.stack(dtp, axis=1)
+        time_to_hospital = np.hstack(travel)
+        dtp = np.dstack(dtp)[0]
 
         time = self.patient.symptom_time + time_to_hospital + dtp
         self._onset_evt_noship = time
@@ -179,10 +179,10 @@ class IschemicTimes:
                 transfer_time.append(primary.transfer_time)
                 transfer_to_puncture.append(comp.door_to_puncture -
                                             primary.door_to_needle)
-        to_primary = np.stack(to_primary)
-        door_to_needle = np.stack(door_to_needle, axis=1)
-        transfer_time = np.stack(transfer_time)
-        transfer_to_puncture = np.stack(transfer_to_puncture, axis=1)
+        to_primary = np.hstack(to_primary)
+        door_to_needle = np.dstack(door_to_needle)[0]
+        transfer_time = np.hstack(transfer_time)
+        transfer_to_puncture = np.dstack(transfer_to_puncture)[0]
         # approximation of intrahospital time for transfer, which seems to
         #   cancel out here, so primary DTN doesn't impact drip and ship time
         #   to EVT. (Maybe this should use comp.door_to_needle instead?)
