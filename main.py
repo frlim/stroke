@@ -66,16 +66,19 @@ def run_model(times_file, hospitals_file, fix_performance=False,
                 results['Location'] = point
                 results['Patient'] = first_pat_num + pat_num
                 results['Varying Hospitals'] = uses_hospital_performance
-                results['Num_Primaries'] = len(model.primaries)
+                results['Primary Count'] = len(model.primaries)
+                results['Comprehensive Count'] = len(model.comprehensives)
                 results['Sex'] = str(patient.sex)
                 results['Age'] = patient.age
                 results['Symptoms'] = patient.symptom_time
                 results['RACE'] = patient.severity.score
-                results.update(these_results.counts_by_center)
+                cbc = these_results.counts_by_center
+                cbc = {str(center): count for center, count in cbc.items()}
+                results.update(cbc)
                 
                 patient_results.append(results)
         # Save after each patient in case we cancel or crash
-        data_io.save_patient(res_name, patient_results)
+        data_io.save_patient(res_name, patient_results, hospitals)
 
     return
 

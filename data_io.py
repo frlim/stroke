@@ -91,34 +91,32 @@ def get_next_patient_number(results_file):
     return max(patients) + 1
     
 
-def get_header(results_file):
+def get_header(hospitals):
     '''
-    Get a list of column names for the given results file if it exists.
+    Get a list of column names for an output file with the given hospitals
     '''
-    if not os.path.isfile(results_file):
-        return None
-        
-    with open(results_file, 'r') as f:
-        reader = csv.DictReader(f)
-        return reader.fieldnames
+    fieldnames = [
+        'Location', 'Patient', 'Varying Hospitals', 'Primary Count',
+        'Comprehensive Count', 'Sex', 'Age', 'Symptoms', 'RACE'
+    ]
+    fieldnames += [str(hospital) for hospital in hospitals]
+    return fieldnames
     
             
-def save_patient(outfile, patient_results):
+def save_patient(outfile, patient_results, hospitals):
     '''
     Write the results from a single patient at many locations to the given
         file. Results should be a list of dictionaries, one for each row
         of the output where keys are column names.
     '''
-    fieldnames = get_header(outfile)
-    if fieldnames is None:
-        fieldnames = list(patient_results[0].keys())
+    fieldnames = get_header(hospitals)
         
-    if not os.path.isfile(results_file):
-        with open(results_file, 'w') as f:
+    if not os.path.isfile(outfile):
+        with open(outfile, 'w') as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             
-    with open(results_file, 'a') as f:
+    with open(outfile, 'a') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames,
                                 restval=0)
         for results in patient_results:
