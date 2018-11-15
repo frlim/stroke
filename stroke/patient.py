@@ -32,7 +32,7 @@ class Patient:
         Generate a random patient. Fix any input by passing it as an argument.
         """
         if sex is None:
-            sex = rng.choice(constants.Sex)
+            sex = rng.choice(list(constants.Sex))
 
         if age is None:
             age = rng.randint(30, 85)

@@ -42,7 +42,10 @@ class StrokeModel:
         for center in self._hospitals:
             center_id = str(center.center_id)
             if center_id in times:
-                center.time = times[center_id]
+                try:
+                    center.time = float(times[center_id])
+                except ValueError:
+                    center.time = np.NaN
             else:
                 center.time = np.NaN
 

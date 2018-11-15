@@ -4,8 +4,7 @@ Run analysis on a set of map points given times to nearby hospitals
 import os
 import argparse
 import itertools
-import warnings
-import pandas as pd
+import collections
 import data_io
 from stroke.patient import Patient
 import stroke.stroke_model as sm
@@ -47,51 +46,38 @@ def run_model(times_file, hospitals_file, fix_performance=False,
 
     patients = [Patient.random(**kwargs) for _ in range(patient_count)]
 
-    times = pd.read_csv(times_file, index_col=0)
+    times = data_io.get_times(times_file)
 
     res_name = results_name(times_file, hospitals_file, fix_performance,
                             simulation_count)
-    if os.path.isfile(res_name):
-        results = pd.read_csv(res_name, index_col=[0, 1, 2])
-        first_pat_num = results.index.get_level_values(1).max() + 1
-    else:
-        index = [(point, pat, hosp) for (point, pat, hosp)
-                 in itertools.product(times.index, [0],
-                                      [True, False])]
-        index = pd.MultiIndex.from_tuples(index, names=['Location',
-                                                        'Patient',
-                                                        'Varying Hospitals'])
-
-        results = pd.DataFrame(index=index)
-        first_pat_num = 0
-    results = results.sort_index()
-    warnings.filterwarnings('ignore', message='indexing past lexsort')
+    first_pat_num = data_io.get_next_patient_number(res_name)
+    
     for pat_num, patient in enumerate(tqdm(patients, desc='Patients')):
-        for point in tqdm(times.index, desc='Map Points', leave=False):
+        patient_results = []
+        for point, these_times in tqdm(times.items(), desc='Map Points', leave=False):
             for uses_hospital_performance, hospital_list in hospital_lists:
-                these_times = times.loc[point]
                 model = sm.StrokeModel(patient, hospital_list)
                 model.set_times(these_times)
                 these_results = model.run(
                     n=simulation_count,
                     fix_performance=fix_performance
                 )
-                res_i = (point, first_pat_num + pat_num,
-                         uses_hospital_performance)
-                results.loc[res_i, 'Num_Primaries'] = len(model.primaries)
-                results.loc[res_i, 'Sex'] = str(patient.sex)
-                results.loc[res_i, 'Age'] = patient.age
-                results.loc[res_i, 'Symptoms'] = patient.symptom_time
-                results.loc[res_i, 'RACE'] = patient.severity.score
-                cbc = these_results.counts_by_center.items()
-                for center, count in cbc:
-                    results.loc[res_i, str(center.center_id)] = count
+                results = collections.OrderedDict()
+                results['Location'] = point
+                results['Patient'] = first_pat_num + pat_num
+                results['Varying Hospitals'] = uses_hospital_performance
+                results['Num_Primaries'] = len(model.primaries)
+                results['Sex'] = str(patient.sex)
+                results['Age'] = patient.age
+                results['Symptoms'] = patient.symptom_time
+                results['RACE'] = patient.severity.score
+                results.update(these_results.counts_by_center)
+                
+                patient_results.append(results)
         # Save after each patient in case we cancel or crash
-        results.to_csv(res_name)
+        data_io.save_patient(res_name, patient_results)
 
-    results = results.fillna(0)
-    results.to_csv(res_name)
-    return results
+    return
 
 
 def main(args):
