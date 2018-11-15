@@ -14,14 +14,14 @@ def get_hospitals(hospital_file, use_default_times=False):
         directory
     '''
     hospital_file = os.path.join('data', 'hospitals', hospital_file)
-    data = pd.read_csv(hospital_file, sep='|')
+    data = pd.read_csv(hospital_file, sep=',')
 
     comp_dict = {}
     comp_data = data[data.CenterType == 'Comprehensive']
     for i in comp_data.index:
-        name = comp_data.OrganizationName[i]
-        city = comp_data.City[i] + ', ' + comp_data.State[i]
-        long_name = f'{name} ({city})'
+        center_id = comp_data.CenterID[i]
+        name = str(center_id)
+        long_name = f'Center {center_id}'
         if use_default_times:
             dtn_dist = None
             dtp_dist = None
@@ -37,8 +37,6 @@ def get_hospitals(hospital_file, use_default_times=False):
                 comp_data.DTP_3rd[i]
             )
 
-        center_id = comp_data.CenterID[i]
-
         comp = sc.StrokeCenter(long_name, name, sc.CenterType.COMPREHENSIVE,
                                center_id,
                                dtn_dist=dtn_dist, dtp_dist=dtp_dist)
@@ -47,9 +45,9 @@ def get_hospitals(hospital_file, use_default_times=False):
     primaries = []
     prim_data = data[data.CenterType == 'Primary']
     for i in prim_data.index:
-        name = prim_data.OrganizationName[i]
-        city = prim_data.City[i] + ', ' + prim_data.State[i]
-        long_name = f'{name} ({city})'
+        center_id = prim_data.CenterID[i]
+        name = str(center_id)
+        long_name = f'Center {center_id}'
         if use_default_times:
             dtn_dist = None
         else:

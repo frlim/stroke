@@ -8,6 +8,14 @@ class Sex(enum.IntEnum):
     MALE = 0
     FEMALE = 1
 
+    def __str__(self):
+        if self is Sex.MALE:
+            return 'male'
+        elif self is Sex.FEMALE:
+            return 'female'
+        else:
+            raise ValueError(f'Unrecognized sex {self}')
+
 
 class States(enum.IntEnum):
     '''

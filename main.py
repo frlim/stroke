@@ -45,19 +45,18 @@ def run_model(times_file, hospitals_file, fix_performance=False,
     patients = [Patient.random(**kwargs) for _ in range(patient_count)]
 
     times = pd.read_csv(os.path.join('data', 'travel_times', times_file),
-                        sep='|').set_index(['Latitude', 'Longitude'])
+                        index_col=0)
 
     res_name = results_name(times_file, hospitals_file, fix_performance,
                             simulation_count)
     if os.path.isfile(res_name):
-        results = pd.read_csv(res_name, index_col=[0, 1, 2, 3])
-        first_pat_num = results.index.get_level_values(2).max() + 1
+        results = pd.read_csv(res_name, index_col=[0, 1, 2])
+        first_pat_num = results.index.get_level_values(1).max() + 1
     else:
-        index = [(lat, lon, pat, hosp) for ((lat, lon), pat, hosp)
-                 in itertools.product(times.index, range(patient_count),
+        index = [(point, pat, hosp) for (point, pat, hosp)
+                 in itertools.product(times.index, [0],
                                       [True, False])]
-        index = pd.MultiIndex.from_tuples(index, names=['Latitude',
-                                                        'Longitude',
+        index = pd.MultiIndex.from_tuples(index, names=['Location',
                                                         'Patient',
                                                         'Varying Hospitals'])
 
@@ -66,19 +65,19 @@ def run_model(times_file, hospitals_file, fix_performance=False,
     results = results.sort_index()
     warnings.filterwarnings('ignore', message='indexing past lexsort')
     for pat_num, patient in enumerate(tqdm(patients, desc='Patients')):
-        for lat, lon in tqdm(times.index, desc='Map Points', leave=False):
+        for point in tqdm(times.index, desc='Map Points', leave=False):
             for uses_hospital_performance, hospital_list in hospital_lists:
-                these_times = times.loc[(lat, lon)]
+                these_times = times.loc[point]
                 model = sm.StrokeModel(patient, hospital_list)
                 model.set_times(these_times)
                 these_results = model.run(
                     n=simulation_count,
                     fix_performance=fix_performance
                 )
-                res_i = (lat, lon, first_pat_num + pat_num,
+                res_i = (point, first_pat_num + pat_num,
                          uses_hospital_performance)
                 results.loc[res_i, 'Num_Primaries'] = len(model.primaries)
-                results.loc[res_i, 'Sex'] = patient.sex
+                results.loc[res_i, 'Sex'] = str(patient.sex)
                 results.loc[res_i, 'Age'] = patient.age
                 results.loc[res_i, 'Symptoms'] = patient.symptom_time
                 results.loc[res_i, 'RACE'] = patient.severity.score
@@ -94,9 +93,9 @@ def run_model(times_file, hospitals_file, fix_performance=False,
 
 
 if __name__ == '__main__':
-    times_file = 'CT_test_2018-09-07_11-19.csv'
-    hospitals_file = 'CT_2018-09-06_17-23.csv'
-    patient_count = 2
+    times_file = 'Demo_n=100.csv'
+    hospitals_file = 'Demo.csv'
+    patient_count = 100
     simulation_count = 5000
 
     run_model(times_file, hospitals_file, patient_count=patient_count,
