@@ -1,7 +1,6 @@
 """
 Read input files to prepare for model runs
 """
-import os
 import pandas as pd
 import stroke.stroke_center as sc
 
@@ -10,10 +9,9 @@ def get_hospitals(hospital_file, use_default_times=False):
     '''Generate a list of StrokeCenters from a csv
         file containing transfer destinations and times. Optionally use
         recorded hospital performance metrics. The CSV is assumed to be
-        formatted like `data/hospitals/CT.csv` and be in the data/hospitals
+        formatted like `data/hospitals/Demo.csv` and be in the data/hospitals
         directory
     '''
-    hospital_file = os.path.join('data', 'hospitals', hospital_file)
     data = pd.read_csv(hospital_file, sep=',')
 
     comp_dict = {}

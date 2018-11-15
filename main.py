@@ -2,6 +2,7 @@
 Run analysis on a set of map points given times to nearby hospitals
 """
 import os
+import argparse
 import itertools
 import warnings
 import pandas as pd
@@ -18,6 +19,8 @@ except NameError:
 def results_name(times_file, hospitals_file, fix_performance,
                  simulation_count):
     """Get the name for the file storing results for the given arguments."""
+    times_file = os.path.basename(times_file)
+    hospitals_file = os.path.basename(hospitals_file)
     out_name = f'times={times_file.strip(".csv")}'
     out_name += f'_hospitals={hospitals_file.strip(".csv")}'
     out_name += '_fixed' if fix_performance else '_random'
@@ -44,8 +47,7 @@ def run_model(times_file, hospitals_file, fix_performance=False,
 
     patients = [Patient.random(**kwargs) for _ in range(patient_count)]
 
-    times = pd.read_csv(os.path.join('data', 'travel_times', times_file),
-                        index_col=0)
+    times = pd.read_csv(times_file, index_col=0)
 
     res_name = results_name(times_file, hospitals_file, fix_performance,
                             simulation_count)
@@ -92,11 +94,33 @@ def run_model(times_file, hospitals_file, fix_performance=False,
     return results
 
 
-if __name__ == '__main__':
-    times_file = 'Demo_n=100.csv'
-    hospitals_file = 'Demo.csv'
-    patient_count = 100
-    simulation_count = 5000
+def main(args):
+    times_file = args.times_file
+    hospitals_file = args.hospital_file
+    patient_count = args.patients
+    simulation_count = args.simulations
 
     run_model(times_file, hospitals_file, patient_count=patient_count,
               fix_performance=False, simulation_count=simulation_count)
+
+
+if __name__ == '__main__':
+    p_default = 10
+    s_default = 1000
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('hospital_file',
+                        help='full path to file with hospital information')
+    parser.add_argument('times_file',
+                        help='full path to file with travel times')
+    p_help = 'number of random patients to run at each location'
+    p_help += f' (default {p_default})'
+    parser.add_argument(
+        '-p', '--patients', type=int, default=p_default, help=p_help
+    )
+    s_help = f'number of model runs for each scenario (default {s_default})'
+    parser.add_argument(
+        '-s', '--simulations', type=int, default=1000, help=s_help
+    )
+    args = parser.parse_args()
+    main(args)

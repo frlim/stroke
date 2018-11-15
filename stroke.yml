@@ -1,0 +1,5 @@
+name: stroke
+dependencies:
+- python=3
+- pandas
+- tqdm

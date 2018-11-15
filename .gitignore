@@ -8,6 +8,7 @@
 
 # Output
 output/*
+*.html
 
 # Notebooks
 *.ipynb*
