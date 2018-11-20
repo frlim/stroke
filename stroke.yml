@@ -1,5 +1,5 @@
 name: stroke
 dependencies:
 - python=3
-- numpy>=1.10
+- numpy
 - tqdm
