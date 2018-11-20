@@ -23,7 +23,7 @@ def get_hospitals(hospital_file, use_default_times=False):
             center_type = row['CenterType']
             name = str(center_id)
             long_name = f'Center {center_id}'
-            
+
             if use_default_times:
                 dtn_dist = None
                 dtp_dist = None
@@ -43,8 +43,10 @@ def get_hospitals(hospital_file, use_default_times=False):
                     dtp_dist = None
 
             if center_type == 'Comprehensive':
-                comp = sc.StrokeCenter(long_name, name, sc.CenterType.COMPREHENSIVE,
-                                       center_id, dtn_dist=dtn_dist, dtp_dist=dtp_dist)
+                comp = sc.StrokeCenter(long_name, name,
+                                       sc.CenterType.COMPREHENSIVE,
+                                       center_id, dtn_dist=dtn_dist,
+                                       dtp_dist=dtp_dist)
                 comprehensives[center_id] = comp
             elif center_type == 'Primary':
                 transfer_id = int(float(row['destinationID']))
@@ -53,15 +55,15 @@ def get_hospitals(hospital_file, use_default_times=False):
                 prim = sc.StrokeCenter(long_name, name, sc.CenterType.PRIMARY,
                                        center_id, dtn_dist=dtn_dist)
                 primaries[center_id] = prim
-    
+
     for primary_id, (transfer_id, transfer_time) in destinations.items():
         prim = primaries[primary_id]
         transfer_destination = comprehensives[transfer_id]
         prim.add_transfer_destination(transfer_destination, transfer_time)
 
     return list(primaries.values()) + list(comprehensives.values())
-    
-    
+
+
 def get_times(times_file):
     '''
     Generate a dictionary of dictionaries representing each point in the given
@@ -72,7 +74,7 @@ def get_times(times_file):
     with open(times_file, 'r') as f:
         reader = csv.DictReader(f)
         return {int(row['ID']): row for row in reader}
-        
+
 
 def get_next_patient_number(results_file):
     '''
@@ -81,15 +83,15 @@ def get_next_patient_number(results_file):
     '''
     if not os.path.isfile(results_file):
         return 0
-        
+
     with open(results_file, 'r') as f:
         reader = csv.DictReader(f)
         patients = set()
         for row in reader:
             patients.add(int(row['Patient']))
-    
+
     return max(patients) + 1
-    
+
 
 def get_header(hospitals):
     '''
@@ -101,8 +103,8 @@ def get_header(hospitals):
     ]
     fieldnames += [str(hospital) for hospital in hospitals]
     return fieldnames
-    
-            
+
+
 def save_patient(outfile, patient_results, hospitals):
     '''
     Write the results from a single patient at many locations to the given
@@ -110,12 +112,12 @@ def save_patient(outfile, patient_results, hospitals):
         of the output where keys are column names.
     '''
     fieldnames = get_header(hospitals)
-        
+
     if not os.path.isfile(outfile):
         with open(outfile, 'w') as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
-            
+
     with open(outfile, 'a') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames,
                                 restval=0)

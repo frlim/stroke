@@ -3,7 +3,6 @@ Run analysis on a set of map points given times to nearby hospitals
 """
 import os
 import argparse
-import itertools
 import collections
 import multiprocessing as mp
 import data_io
@@ -53,15 +52,16 @@ def run_model(times_file, hospitals_file, fix_performance=False,
     res_name = results_name(times_file, hospitals_file, fix_performance,
                             simulation_count)
     first_pat_num = data_io.get_next_patient_number(res_name)
-    
+
     if cores is False:
         pool = False
     else:
         pool = mp.Pool(cores)
-    
+
     for pat_num, patient in enumerate(tqdm(patients, desc='Patients')):
         patient_results = []
-        for point, these_times in tqdm(times.items(), desc='Map Points', leave=False):
+        for point, these_times in tqdm(times.items(), desc='Map Points',
+                                       leave=False):
             for uses_hospital_performance, hospital_list in hospital_lists:
                 if pool:
                     results = pool.apply_async(
@@ -111,7 +111,7 @@ def run_one_scenario(patient, point, these_times, hospital_list,
     cbc = these_results.counts_by_center
     cbc = {str(center): count for center, count in cbc.items()}
     results.update(cbc)
-    
+
     return results
 
 
