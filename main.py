@@ -102,8 +102,8 @@ def run_one_scenario(patient, point, these_times, hospital_list,
     results['Location'] = point
     results['Patient'] = first_pat_num + pat_num
     results['Varying Hospitals'] = uses_hospital_performance
-    results['Primary Count'] = len(model.primaries)
-    results['Comprehensive Count'] = len(model.comprehensives)
+    results['PSC Count'] = len(model.primaries)
+    results['CSC Count'] = len(model.comprehensives)
     results['Sex'] = str(patient.sex)
     results['Age'] = patient.age
     results['Symptoms'] = patient.symptom_time

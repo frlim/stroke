@@ -123,9 +123,9 @@ class StrokeCenter:
     def __str__(self):
         out = self.short_name
         if self.center_type is CenterType.PRIMARY:
-            out += ' (Primary)'
+            out += ' (PSC)'
         elif self.center_type is CenterType.COMPREHENSIVE:
-            out += ' (Comprehensive)'
+            out += ' (CSC)'
 
         return out
 

@@ -90,7 +90,10 @@ def get_next_patient_number(results_file):
         for row in reader:
             patients.add(int(row['Patient']))
 
-    return max(patients) + 1
+    if patients:
+        return max(patients) + 1
+    else:
+        return 0
 
 
 def get_header(hospitals):
@@ -98,8 +101,8 @@ def get_header(hospitals):
     Get a list of column names for an output file with the given hospitals
     '''
     fieldnames = [
-        'Location', 'Patient', 'Varying Hospitals', 'Primary Count',
-        'Comprehensive Count', 'Sex', 'Age', 'Symptoms', 'RACE'
+        'Location', 'Patient', 'Varying Hospitals', 'PSC Count',
+        'CSC Count', 'Sex', 'Age', 'Symptoms', 'RACE'
     ]
     fieldnames += [str(hospital) for hospital in hospitals]
     return fieldnames
