@@ -173,7 +173,9 @@ class IschemicTimes:
             door_to_needle.append(primary.door_to_needle)
             if primary.transfer_destination is None:
                 transfer_time.append(np.NaN)
-                transfer_to_puncture.append(np.NaN)
+                null_ttp = np.broadcast_arrays(np.NaN,
+                                               primary.door_to_needle)[0]
+                transfer_to_puncture.append(null_ttp)
             else:
                 comp = primary.transfer_destination
                 transfer_time.append(primary.transfer_time)

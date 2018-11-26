@@ -3,6 +3,7 @@ Read input files to prepare for model runs
 """
 import csv
 import os
+import warnings
 import stroke.stroke_center as sc
 
 
@@ -49,9 +50,12 @@ def get_hospitals(hospital_file, use_default_times=False):
                                        dtp_dist=dtp_dist)
                 comprehensives[center_id] = comp
             elif center_type == 'Primary':
-                transfer_id = int(float(row['destinationID']))
-                transfer_time = float(row['transfer_time'])
-                destinations[center_id] = (transfer_id, transfer_time)
+                try:
+                    transfer_id = int(float(row['destinationID']))
+                    transfer_time = float(row['transfer_time'])
+                    destinations[center_id] = (transfer_id, transfer_time)
+                except ValueError:
+                    warnings.warn(f'No transfer destination for {long_name}')
                 prim = sc.StrokeCenter(long_name, name, sc.CenterType.PRIMARY,
                                        center_id, dtn_dist=dtn_dist)
                 primaries[center_id] = prim

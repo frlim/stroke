@@ -108,12 +108,15 @@ class IschemicModel:
         onset_puncture = self.times.onset_evt_ship
         # If there isn't time to receive EVT after a transfer, then drip and
         #   ship isn't a viable strategy so we set p_good to NaN
-        p_good = np.where(onset_puncture < constants.time_limit_evt(),
+        evt_possible = _compare_nan_array(np.less,
+                                          onset_puncture,
+                                          constants.time_limit_evt())
+        tpa_possible = onset_needle < constants.time_limit_tpa()
+        p_good = np.where(evt_possible,
                           self._get_p_good(onset_needle, onset_puncture),
                           np.NaN)
-        p_tpa = np.where(onset_needle < constants.time_limit_tpa(), 1, 0)
-        p_evt = np.where(onset_puncture < constants.time_limit_evt(),
-                         self.times.p_lvo, 0)
+        p_tpa = np.where(tpa_possible, 1, 0)
+        p_evt = np.where(evt_possible, self.times.p_lvo, 0)
         # We assume transfer happens, since otherwise this is just a repeat of
         #   primary strategy. Ideally we might model an estimated
         #   onset_puncture based on information avaible at the transfer
@@ -138,8 +141,11 @@ class IschemicModel:
 
         p_rep_endo = severity.p_reperfusion_endovascular()
         p_reperfused = (self.times.p_lvo * p_rep_endo)
+        evt_possible = _compare_nan_array(np.less,
+                                          onset_to_evt,
+                                          constants.time_limit_evt())
         p_good_post_evt = np.where(
-            onset_to_evt < constants.time_limit_evt(),
+            evt_possible,
             severity.p_good_outcome_post_evt_success(
                 onset_to_evt
             ),
@@ -149,3 +155,15 @@ class IschemicModel:
 
         return (higher_p_good * p_reperfused +
                 baseline_p_good * (1 - p_reperfused))
+
+
+def _compare_nan_array(func, array, threshold):
+    '''
+    Perform the comparison func(array, threshold) only for non-NaN elements
+        of array. False for NaN elements
+        From https://stackoverflow.com/questions/47340000/
+        how-to-get-rid-of-runtimewarning-invalid-value-encountered-in-greater
+    '''
+    out = ~np.isnan(array)
+    out[out] = func(array[out], threshold)
+    return out
