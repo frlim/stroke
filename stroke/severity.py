@@ -46,7 +46,7 @@ class Severity(abc.ABC):
         else:
             return (-0.0464 * self.NIHSS) + 1.0071
 
-    def p_good_outcome_ais_no_lvo(self, time_onset_tpa):
+    def p_good_outcome_ais_no_lvo(self, time_onset_tpa, age=None):
         '''
         * Note that if your time from onset to tPA is > 270, you won't
             actually get tPA.
@@ -63,11 +63,30 @@ class Severity(abc.ABC):
         # if baseline_prob == 1.0:
         #     baseline_prob = 0.999999999999
         baseline_prob_to_odds = baseline_prob / (1 - baseline_prob)
-        new_odds = baseline_prob_to_odds * odds_ratio
+        if age is not None:
+            odds_ratio_sICH = self.odds_sICH(age)
+        else:
+            odds_ratio_sICH = 1
+        # odds_ratio_sICH smallest value is 0, if that's the case then
+        # odds_ratio_no_sICH would blow up to infinity, m
+        odds_ratio_sICH = np.where(odds_ratio_sICH < 1, 1, odds_ratio_sICH)
+        # next smallest is 1.06 for NIHSS = 1 and age < 55
+        # making some big assumptions here
+        odds_ratio_no_sICH = 1 / odds_ratio_sICH
+        new_odds = baseline_prob_to_odds * odds_ratio * odds_ratio_no_sICH
         adjusted_prob = new_odds / (1 + new_odds)
 
         return np.where(time_onset_tpa < constants.time_limit_tpa(),
                         adjusted_prob, baseline_prob)
+
+    def odds_sICH(self, age):
+        '''Numbers are from Table 3 of Tong et al 2014'''
+        odds_ratio_age = np.where(
+            age < 55, 1,
+            np.where(age < 65, 1.19,
+                     np.where(age < 75, 1.30, np.where(age < 80, 3.01, 3.09))))
+        odds_ratio_nihss = 1.06 * self.NIHSS  # per score
+        return odds_ratio_age * odds_ratio_nihss
 
     def p_reperfusion_endovascular(self):
         # Saver et al. JAMA 2016, Schlemm analysis
@@ -99,8 +118,7 @@ class Severity(abc.ABC):
         states[:, :, constants.States.MRS_6] = np.where(
             self.NIHSS < 7, 0.042,
             np.where(self.NIHSS < 13, 0.139,
-                     np.where(self.NIHSS < 21, 0.316, 0.535))
-        )
+                     np.where(self.NIHSS < 21, 0.316, 0.535)))
 
         # Good outcomes
         states[:, :, constants.States.MRS_0] = 0.205627706 * p_good_outcome
@@ -142,6 +160,7 @@ class RACE(Severity):
         Get the probability of an LVO under the assumption that the severity
             describes an acute ischemic stroke.
         """
+
         # Perez de la Ossa et al. Stroke 2014 data for p lvo given ais
         def p_lvo_logistic_helper(b0, b1):
             return (1.0 / (1.0 + np.exp(-b0 - b1 * self.score)))

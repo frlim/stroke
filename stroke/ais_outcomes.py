@@ -133,7 +133,8 @@ class IschemicModel:
             treatment times.
         """
         severity = self.times.patient.severity
-        baseline_p_good = severity.p_good_outcome_ais_no_lvo(onset_to_tpa)
+        age = self.times.patient.age
+        baseline_p_good = severity.p_good_outcome_ais_no_lvo(onset_to_tpa,age)
 
         if onset_to_evt is None:
             # No EVT, outcome just depends on time to tPA
