@@ -39,10 +39,11 @@ class Patient:
 
         if race is not None:
             severity = sev.RACE(race)
-        if race is None and nihss is not None:
-            severity = sev.NIHSS(nihss)
         else:
-            severity = sev.RACE(rng.randint(0, 9))
+            if race is None and nihss is not None:
+                severity = sev.NIHSS(nihss)
+            else:
+                severity = sev.RACE(rng.randint(0, 9))
 
         if time_since_symptoms is None:
             time_since_symptoms = rng.uniform(10, 100)

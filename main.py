@@ -30,8 +30,12 @@ def results_name(times_file, hospitals_file, fix_performance,
     return out_file
 
 
-def run_model(times_file, hospitals_file, fix_performance=False,
-              patient_count=100, simulation_count=1000, cores=None,
+def run_model(times_file,
+              hospitals_file,
+              fix_performance=False,
+              patient_count=100,
+              simulation_count=1000,
+              cores=None,
               **kwargs):
     '''Run the model on the given map points for the given hospitals. The
         times file should be in data/travel_times and contain travel times to
@@ -60,24 +64,20 @@ def run_model(times_file, hospitals_file, fix_performance=False,
 
     for pat_num, patient in enumerate(tqdm(patients, desc='Patients')):
         patient_results = []
-        for point, these_times in tqdm(times.items(), desc='Map Points',
-                                       leave=False):
+        for point, these_times in tqdm(
+                times.items(), desc='Map Points', leave=False):
             for uses_hospital_performance, hospital_list in hospital_lists:
                 if pool:
                     results = pool.apply_async(
                         run_one_scenario,
                         (patient, point, these_times, hospital_list,
-                         uses_hospital_performance,
-                         simulation_count, fix_performance,
-                         first_pat_num, pat_num)
-                    )
+                         uses_hospital_performance, simulation_count,
+                         fix_performance, first_pat_num, pat_num))
                 else:
                     results = run_one_scenario(
                         patient, point, these_times, hospital_list,
-                        uses_hospital_performance,
-                        simulation_count, fix_performance,
-                        first_pat_num, pat_num
-                    )
+                        uses_hospital_performance, simulation_count,
+                        fix_performance, first_pat_num, pat_num)
                 patient_results.append(results)
         if pool:
             to_fetch = tqdm(patient_results, desc='Map Points', leave=False)
@@ -89,15 +89,12 @@ def run_model(times_file, hospitals_file, fix_performance=False,
 
 
 def run_one_scenario(patient, point, these_times, hospital_list,
-                     uses_hospital_performance,
-                     simulation_count, fix_performance,
-                     first_pat_num, pat_num):
+                     uses_hospital_performance, simulation_count,
+                     fix_performance, first_pat_num, pat_num):
     model = sm.StrokeModel(patient, hospital_list)
     model.set_times(these_times)
     these_results = model.run(
-        n=simulation_count,
-        fix_performance=fix_performance
-    )
+        n=simulation_count, fix_performance=fix_performance)
     results = collections.OrderedDict()
     results['Location'] = point
     results['Patient'] = first_pat_num + pat_num
@@ -115,19 +112,37 @@ def run_one_scenario(patient, point, these_times, hospital_list,
     return results
 
 
+def parse_extra_inputs(args):
+    kwargs = {}
+    if hasattr(args,'sex'):
+        kwargs['sex'] = args.sex
+    if hasattr(args,'age'):
+        kwargs['age'] = args.age
+    if hasattr(args,'race'):
+        kwargs['race'] =args.race
+    if hasattr(args,'time_since_symptoms'):
+        kwargs['time_since_symptoms'] = args.time_since_symptoms
+    return kwargs
+
 def main(args):
     times_file = args.times_file
     hospitals_file = args.hospital_file
     patient_count = args.patients
     simulation_count = args.simulations
+    kwargs = parse_extra_inputs(args)
+
     if args.multicore:
         cores = None
     else:
         cores = False
 
-    run_model(times_file, hospitals_file, patient_count=patient_count,
-              fix_performance=False, simulation_count=simulation_count,
-              cores=cores)
+    run_model(
+        times_file,
+        hospitals_file,
+        patient_count=patient_count,
+        fix_performance=False,
+        simulation_count=simulation_count,
+        **kwargs)
 
 
 if __name__ == '__main__':
@@ -135,20 +150,21 @@ if __name__ == '__main__':
     s_default = 1000
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('hospital_file',
-                        help='full path to file with hospital information')
-    parser.add_argument('times_file',
-                        help='full path to file with travel times')
+    parser.add_argument(
+        'hospital_file', help='full path to file with hospital information')
+    parser.add_argument(
+        'times_file', help='full path to file with travel times')
     p_help = 'number of random patients to run at each location'
     p_help += f' (default {p_default})'
     parser.add_argument(
-        '-p', '--patients', type=int, default=p_default, help=p_help
-    )
+        '-p', '--patients', type=int, default=p_default, help=p_help)
     s_help = f'number of model runs for each scenario (default {s_default})'
     parser.add_argument(
-        '-s', '--simulations', type=int, default=1000, help=s_help
-    )
-    parser.add_argument('-m', '--multicore', action='store_true',
-                        help='Use all available CPU cores')
+        '-s', '--simulations', type=int, default=1000, help=s_help)
+    parser.add_argument(
+        '-m',
+        '--multicore',
+        action='store_true',
+        help='Use all available CPU cores')
     args = parser.parse_args()
     main(args)
