@@ -4,9 +4,17 @@ import glob
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import animation
+import argparse
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        'output_file', help='full path to file to model output')
+    args = parser.parse_args()
+
 
 # Load file
-output_path = Path("output/times*.csv")
+output_path = Path(args.output_file)
 result = [i for i in glob.glob(str(output_path))]
 file_dir = result[0]
 df = pd.read_csv(file_dir)
