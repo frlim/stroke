@@ -39,12 +39,16 @@ class Outcome:
         Combine outcomes for multiple sets of strategies
         """
         p_good = np.concatenate([self.p_good, other.p_good], axis=1)
-        p_tpa = np.concatenate([self._reshape(self.p_tpa),
-                                other._reshape(other.p_tpa)], axis=1)
-        p_evt = np.concatenate([self._reshape(self.p_evt),
-                                other._reshape(other.p_evt)], axis=1)
-        p_transfer = np.concatenate([self._reshape(self.p_transfer),
-                                     other._reshape(other.p_transfer)], axis=1)
+        p_tpa = np.concatenate(
+            [self._reshape(self.p_tpa),
+             other._reshape(other.p_tpa)], axis=1)
+        p_evt = np.concatenate(
+            [self._reshape(self.p_evt),
+             other._reshape(other.p_evt)], axis=1)
+        p_transfer = np.concatenate(
+            [self._reshape(self.p_transfer),
+             other._reshape(other.p_transfer)],
+            axis=1)
         strategies = self.strategies + other.strategies
         return Outcome(p_good, p_tpa, p_evt, p_transfer, strategies)
 
@@ -53,7 +57,6 @@ class Outcome:
 
 
 class IschemicModel:
-
     def __init__(self, times):
         """
         Initialize with an IschemicTimes object storing times to be used to
@@ -66,8 +69,8 @@ class IschemicModel:
         primary_outcomes = self.run_primaries()
         drip_and_ship_outcomes = self.run_drip_and_ship()
         comprehensive_outcomes = self.run_comprehensives()
-        return (primary_outcomes + drip_and_ship_outcomes +
-                comprehensive_outcomes)
+        return (
+            primary_outcomes + drip_and_ship_outcomes + comprehensive_outcomes)
 
     def run_primaries(self):
         """
@@ -108,8 +111,7 @@ class IschemicModel:
         onset_puncture = self.times.onset_evt_ship
         # If there isn't time to receive EVT after a transfer, then drip and
         #   ship isn't a viable strategy so we set p_good to NaN
-        evt_possible = _compare_nan_array(np.less,
-                                          onset_puncture,
+        evt_possible = _compare_nan_array(np.less, onset_puncture,
                                           constants.time_limit_evt())
         tpa_possible = onset_needle < constants.time_limit_tpa()
         p_good = np.where(evt_possible,
@@ -133,7 +135,8 @@ class IschemicModel:
             treatment times.
         """
         severity = self.times.patient.severity
-        baseline_p_good = severity.p_good_outcome_ais_no_lvo(onset_to_tpa)
+        age = self.times.patient.age
+        baseline_p_good = severity.p_good_outcome_ais_no_lvo(onset_to_tpa, age)
 
         if onset_to_evt is None:
             # No EVT, outcome just depends on time to tPA
@@ -141,16 +144,12 @@ class IschemicModel:
 
         p_rep_endo = severity.p_reperfusion_endovascular()
         p_reperfused = (self.times.p_lvo * p_rep_endo)
-        evt_possible = _compare_nan_array(np.less,
-                                          onset_to_evt,
+        evt_possible = _compare_nan_array(np.less, onset_to_evt,
                                           constants.time_limit_evt())
         p_good_post_evt = np.where(
             evt_possible,
-            severity.p_good_outcome_post_evt_success(
-                onset_to_evt
-            ),
-            baseline_p_good
-        )
+            severity.p_good_outcome_post_evt_success(onset_to_evt),
+            baseline_p_good)
         higher_p_good = np.maximum(p_good_post_evt, baseline_p_good)
 
         return (higher_p_good * p_reperfused +

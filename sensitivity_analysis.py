@@ -13,9 +13,9 @@ if __name__ == '__main__':
 
     sex = constants.Sex.FEMALE
     upper = 1
-    for age in range(70, 70 + upper, 5):  # 30 to 85
-        for race in range(7, 7 + upper, 1):  # 0 to 9
-            for time_since_symptoms in range(50, 100 + upper, 10):  # 10 to 100
+    for age in range(30, 85 + upper, 5):  # 30 to 85
+        for race in range(0, 9 + upper, 1):  # 0 to 9
+            for time_since_symptoms in range(10, 100 + upper, 10):  # 10 to 100
                 args = Namespace(
                     patients=1,
                     simulations=s_default,
