@@ -141,6 +141,7 @@ def main(args):
         hospitals_file,
         patient_count=patient_count,
         fix_performance=False,
+        cores=cores,
         simulation_count=simulation_count,
         **kwargs)
 
