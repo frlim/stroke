@@ -84,7 +84,8 @@ def run_model(times_file,
             patient_results = [job.get() for job in to_fetch]
         # Save after each patient in case we cancel or crash
         data_io.save_patient(res_name, patient_results, hospitals)
-
+    if pool:
+        pool.close()
     return
 
 
@@ -141,8 +142,8 @@ def main(args):
         hospitals_file,
         patient_count=patient_count,
         fix_performance=False,
-        cores=cores,
         simulation_count=simulation_count,
+        cores=cores,
         **kwargs)
 
 
