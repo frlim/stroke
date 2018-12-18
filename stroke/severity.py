@@ -68,10 +68,10 @@ class Severity(abc.ABC):
         else:
             odds_ratio_sICH = 1
         # odds_ratio_sICH smallest value is 0, if that's the case then
-        # odds_ratio_no_sICH would blow up to infinity, m
+        # odds_ratio_no_sICH would blow up to infinity, so make min at 1
         odds_ratio_sICH = np.where(odds_ratio_sICH < 1, 1, odds_ratio_sICH)
         # next smallest is 1.06 for NIHSS = 1 and age < 55
-        # making some big assumptions here
+        # making some big assumptions here by multiplying odds together
         odds_ratio_no_sICH = 1 / odds_ratio_sICH
         new_odds = baseline_prob_to_odds * odds_ratio * odds_ratio_no_sICH
         adjusted_prob = new_odds / (1 + new_odds)

@@ -5,6 +5,8 @@ import csv
 import os
 import warnings
 import stroke.stroke_center as sc
+import pandas as pd
+import gc
 
 
 def get_hospitals(hospital_file, use_default_times=False):
@@ -30,24 +32,23 @@ def get_hospitals(hospital_file, use_default_times=False):
                 dtp_dist = None
             else:
                 dtn_dist = sc.HospitalTimeDistribution(
-                    float(row['DTN_1st']),
-                    float(row['DTN_Median']),
-                    float(row['DTN_3rd'])
-                )
+                    float(row['DTN_1st']), float(row['DTN_Median']),
+                    float(row['DTN_3rd']))
                 if center_type == 'Comprehensive':
                     dtp_dist = sc.HospitalTimeDistribution(
-                        float(row['DTP_1st']),
-                        float(row['DTP_Median']),
-                        float(row['DTP_3rd'])
-                    )
+                        float(row['DTP_1st']), float(row['DTP_Median']),
+                        float(row['DTP_3rd']))
                 else:
                     dtp_dist = None
 
             if center_type == 'Comprehensive':
-                comp = sc.StrokeCenter(long_name, name,
-                                       sc.CenterType.COMPREHENSIVE,
-                                       center_id, dtn_dist=dtn_dist,
-                                       dtp_dist=dtp_dist)
+                comp = sc.StrokeCenter(
+                    long_name,
+                    name,
+                    sc.CenterType.COMPREHENSIVE,
+                    center_id,
+                    dtn_dist=dtn_dist,
+                    dtp_dist=dtp_dist)
                 comprehensives[center_id] = comp
             elif center_type == 'Primary':
                 try:
@@ -56,8 +57,12 @@ def get_hospitals(hospital_file, use_default_times=False):
                     destinations[center_id] = (transfer_id, transfer_time)
                 except ValueError:
                     warnings.warn(f'No transfer destination for {long_name}')
-                prim = sc.StrokeCenter(long_name, name, sc.CenterType.PRIMARY,
-                                       center_id, dtn_dist=dtn_dist)
+                prim = sc.StrokeCenter(
+                    long_name,
+                    name,
+                    sc.CenterType.PRIMARY,
+                    center_id,
+                    dtn_dist=dtn_dist)
                 primaries[center_id] = prim
 
     for primary_id, (transfer_id, transfer_time) in destinations.items():
@@ -105,8 +110,8 @@ def get_header(hospitals):
     Get a list of column names for an output file with the given hospitals
     '''
     fieldnames = [
-        'Location', 'Patient', 'Varying Hospitals', 'PSC Count',
-        'CSC Count', 'Sex', 'Age', 'Symptoms', 'RACE'
+        'Location', 'Patient', 'Varying Hospitals', 'PSC Count', 'CSC Count',
+        'Sex', 'Age', 'Symptoms', 'RACE'
     ]
     fieldnames += [str(hospital) for hospital in hospitals]
     return fieldnames
@@ -125,8 +130,38 @@ def save_patient(outfile, patient_results, hospitals):
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
 
-    with open(outfile, 'a') as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames,
-                                restval=0)
-        for results in patient_results:
-            writer.writerow(results)
+    df = pd.read_csv(outfile)
+    keys = result_input_keys()
+    for results in patient_results:
+        for i, k in enumerate(keys):
+            if i == 0:
+                l = df[k] == results[k]
+            else:
+                l = l & (df[k] == results[k])
+        if l.any():
+            row_num = df.loc[l].index[0]
+            # transfer old patient number to new result
+            pid = df['Patient'].iloc[row_num]
+            results['Patient'] = pid
+            # replace with new result
+            df.iloc[row_num] = pd.Series(results)
+        else:
+            # append to existing data frame
+            df = df.append(pd.Series(results))
+    # Save results
+    df.to_csv(outfile, index=False)
+    # To minmize memory usage
+    del df
+    gc.collect()
+
+
+def result_input_keys():
+    'Dictionary with all keys and empty value'
+    keys = []
+    keys.append('Location')
+    keys.append('Varying Hospitals')
+    keys.append('Sex')
+    keys.append('Age')
+    keys.append('RACE')
+    keys.append('Symptoms')
+    return keys

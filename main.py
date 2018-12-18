@@ -15,7 +15,7 @@ except NameError:
     from tqdm import tqdm
 
 
-def results_name(base_dir ,times_file, hospitals_file, fix_performance,
+def results_name(base_dir, times_file, hospitals_file, fix_performance,
                  simulation_count, sex):
     """Get the name for the file storing results for the given arguments."""
     times_file = os.path.basename(times_file)
@@ -25,21 +25,23 @@ def results_name(base_dir ,times_file, hospitals_file, fix_performance,
     out_name += '_fixed' if fix_performance else '_random'
     out_name += '_' + str(sex)
     out_name += '_python.csv'
-    out_dir = os.path.join(base_dir,'output')
+    out_dir = os.path.join(base_dir, 'output')
     if not os.path.isdir(out_dir):
         os.makedirs(out_dir)
     out_file = os.path.join(out_dir, out_name)
     return out_file
 
 
-def run_model(times_file,
-              hospitals_file,
-              fix_performance=False,
-              patient_count=100,
-              simulation_count=1000,
-              cores=None,
-              base_dir='', # default: current working directory
-              **kwargs):
+def run_model(
+        times_file,
+        hospitals_file,
+        fix_performance=False,
+        patient_count=100,
+        simulation_count=1000,
+        cores=None,
+        base_dir='',  # default: current working directory
+        locations=None,  # default: run for all location in times_file
+        **kwargs):
     '''Run the model on the given map points for the given hospitals. The
         times file should be in data/travel_times and contain travel times to
         appropriate hospitals. The hospitals file should be in data/hospitals
@@ -56,9 +58,11 @@ def run_model(times_file,
     sex = patients[0].sex
 
     times = data_io.get_times(times_file)
+    if locations:  # Not none
+        times = {loc: time for loc, time in times.items() if loc in locations}
 
-    res_name = results_name(base_dir, times_file, hospitals_file, fix_performance,
-                            simulation_count, sex)
+    res_name = results_name(base_dir, times_file, hospitals_file,
+                            fix_performance, simulation_count, sex)
     first_pat_num = data_io.get_next_patient_number(res_name)
 
     if cores is False:
@@ -119,15 +123,16 @@ def run_one_scenario(patient, point, these_times, hospital_list,
 
 def parse_extra_inputs(args):
     kwargs = {}
-    if hasattr(args,'sex'):
+    if hasattr(args, 'sex'):
         kwargs['sex'] = args.sex
-    if hasattr(args,'age'):
+    if hasattr(args, 'age'):
         kwargs['age'] = args.age
-    if hasattr(args,'race'):
-        kwargs['race'] =args.race
-    if hasattr(args,'time_since_symptoms'):
+    if hasattr(args, 'race'):
+        kwargs['race'] = args.race
+    if hasattr(args, 'time_since_symptoms'):
         kwargs['time_since_symptoms'] = args.time_since_symptoms
     return kwargs
+
 
 def main(args):
     times_file = args.times_file
@@ -137,9 +142,14 @@ def main(args):
     kwargs = parse_extra_inputs(args)
 
     if args.base_dir:
-        base_dir = args.base_dir # dir to put output file in
+        base_dir = args.base_dir  # dir to put output file in
     else:
-        base_dir = '' # default: current working directory
+        base_dir = ''  # default: current working directory
+
+    if hasattr(args, 'locations'):
+        locations = args.locations
+    else:
+        locations = None
 
     if args.multicore:
         cores = None
@@ -154,6 +164,7 @@ def main(args):
         simulation_count=simulation_count,
         cores=cores,
         base_dir=base_dir,
+        locations=locations,
         **kwargs)
 
 
