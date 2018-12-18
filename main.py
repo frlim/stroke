@@ -15,18 +15,20 @@ except NameError:
     from tqdm import tqdm
 
 
-def results_name(times_file, hospitals_file, fix_performance,
-                 simulation_count):
+def results_name(base_dir ,times_file, hospitals_file, fix_performance,
+                 simulation_count, sex):
     """Get the name for the file storing results for the given arguments."""
     times_file = os.path.basename(times_file)
     hospitals_file = os.path.basename(hospitals_file)
     out_name = f'times={times_file.strip(".csv")}'
     out_name += f'_hospitals={hospitals_file.strip(".csv")}'
     out_name += '_fixed' if fix_performance else '_random'
+    out_name += '_' + str(sex)
     out_name += '_python.csv'
-    if not os.path.isdir('output'):
-        os.makedirs('output')
-    out_file = os.path.join('output', out_name)
+    out_dir = os.path.join(base_dir,'output')
+    if not os.path.isdir(out_dir):
+        os.makedirs(out_dir)
+    out_file = os.path.join(out_dir, out_name)
     return out_file
 
 
@@ -36,6 +38,7 @@ def run_model(times_file,
               patient_count=100,
               simulation_count=1000,
               cores=None,
+              base_dir='', # default: current working directory
               **kwargs):
     '''Run the model on the given map points for the given hospitals. The
         times file should be in data/travel_times and contain travel times to
@@ -50,11 +53,12 @@ def run_model(times_file,
     hospital_lists = [(True, hospitals), (False, hospitals_default)]
 
     patients = [Patient.random(**kwargs) for _ in range(patient_count)]
+    sex = patients[0].sex
 
     times = data_io.get_times(times_file)
 
-    res_name = results_name(times_file, hospitals_file, fix_performance,
-                            simulation_count)
+    res_name = results_name(base_dir, times_file, hospitals_file, fix_performance,
+                            simulation_count, sex)
     first_pat_num = data_io.get_next_patient_number(res_name)
 
     if cores is False:
@@ -132,6 +136,11 @@ def main(args):
     simulation_count = args.simulations
     kwargs = parse_extra_inputs(args)
 
+    if args.base_dir:
+        base_dir = args.base_dir # dir to put output file in
+    else:
+        base_dir = '' # default: current working directory
+
     if args.multicore:
         cores = None
     else:
@@ -144,6 +153,7 @@ def main(args):
         fix_performance=False,
         simulation_count=simulation_count,
         cores=cores,
+        base_dir=base_dir,
         **kwargs)
 
 

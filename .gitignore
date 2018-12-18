@@ -3,6 +3,9 @@
 *.sublime-workspace
 *.DS_Store
 
+# Play around scripts
+edit.py
+
 # Data
 *.zip
 
