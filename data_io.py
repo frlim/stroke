@@ -133,6 +133,12 @@ def save_patient(outfile, patient_results, hospitals):
     df = pd.read_csv(outfile)
     keys = result_input_keys()
     for results in patient_results:
+        # add zero counts for hospital that are never optimal
+        zero_c = {
+            str(hospital): 0
+            for hospital in hospitals if str(hospital) not in results.keys()
+        }
+        results.update(zero_c)
         for i, k in enumerate(keys):
             if i == 0:
                 l = df[k] == results[k]
@@ -147,7 +153,7 @@ def save_patient(outfile, patient_results, hospitals):
             df.iloc[row_num] = pd.Series(results)
         else:
             # append to existing data frame
-            df = df.append(pd.Series(results))
+            df = df.append(pd.Series(results), ignore_index=True)
     # Save results
     df.to_csv(outfile, index=False)
     # To minmize memory usage

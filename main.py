@@ -50,8 +50,8 @@ def run_model(
         kwargs -- passed through to inputs.Inputs.random to hold parameters
                     constant
     '''
-    hospitals = data_io.get_hospitals(hospitals_file, False)
-    hospitals_default = data_io.get_hospitals(hospitals_file, True)
+    hospitals = data_io.get_hospitals(hospitals_file, use_default_times=False)
+    hospitals_default = data_io.get_hospitals(hospitals_file, use_default_times=True)
     hospital_lists = [(True, hospitals), (False, hospitals_default)]
 
     patients = [Patient.random(**kwargs) for _ in range(patient_count)]
