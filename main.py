@@ -13,7 +13,12 @@ try:
     from tqdm import tqdm_notebook as tqdm
 except NameError:
     from tqdm import tqdm
+import numpy as np
+import pandas as pd
 
+
+NON_COUNT_COLS = ['Location','Patient','Varying Hospitals','PSC Count','CSC Count',
+    'Sex','Age','Symptoms','RACE']
 
 def results_name(base_dir, times_file, hospitals_file, fix_performance,
                  simulation_count, sex):
@@ -70,31 +75,55 @@ def run_model(
     else:
         pool = mp.Pool(cores)
 
+    run_number = range(50) # cap at 50k
     for pat_num, patient in enumerate(tqdm(patients, desc='Patients')):
-        patient_results = []
-        for point, these_times in tqdm(
-                times.items(), desc='Map Points', leave=False):
-            for uses_hospital_performance, hospital_list in hospital_lists:
-                if pool:
-                    results = pool.apply_async(
-                        run_one_scenario,
-                        (patient, point, these_times, hospital_list,
-                         uses_hospital_performance, simulation_count,
-                         fix_performance, first_pat_num, pat_num))
-                else:
-                    results = run_one_scenario(
-                        patient, point, these_times, hospital_list,
-                        uses_hospital_performance, simulation_count,
-                        fix_performance, first_pat_num, pat_num)
-                patient_results.append(results)
-        if pool:
-            to_fetch = tqdm(patient_results, desc='Map Points', leave=False)
-            patient_results = [job.get() for job in to_fetch]
+        new_n_sim = 0
+        convergence = False
+        for i in tqdm(run_number,desc='Run Numbers'):
+            patient_results = []
+            for point, these_times in tqdm(
+                    times.items(), desc='Map Points', leave=False):
+                for uses_hospital_performance, hospital_list in hospital_lists:
+                    if pool:
+                        results = pool.apply_async(
+                            run_one_scenario,
+                            (patient, point, these_times, hospital_list,
+                             uses_hospital_performance, simulation_count,
+                             fix_performance, first_pat_num, pat_num))
+                    else:
+                        results = run_one_scenario(
+                            patient, point, these_times, hospital_list,
+                            uses_hospital_performance, simulation_count,
+                            fix_performance, first_pat_num, pat_num)
+                    patient_results.append(results)
+            if pool:
+                to_fetch = tqdm(patient_results, desc='Map Points', leave=False)
+                patient_results = [job.get() for job in to_fetch]
+
+            new_results = pd.DataFrame(patient_results)
+            center_cols = [str(hospital) for hospital in hospital_list]
+
+            new_n_sim += simulation_count
+            if new_n_sim > simulation_count: # after 1st run
+                convergence = np.abs(new_results[center_cols].values/new_n_sim
+                - old_results[center_cols].values/old_n_sim).max() < .1
+                save_counts += new_results[center_cols].values # add on new sim count
+            else:
+                save_counts = new_results[center_cols].values
+            if convergence == True: break
+            old_results = new_results
+            old_n_sim = new_n_sim
+
+        # generate final results
+        count_df = pd.DataFrame(save_counts,columns=center_cols,index=old_results.index)
+        save_results = pd.concat([old_results[NON_COUNT_COLS],count_df],axis=1)
+        save_results = save_results.to_dict('records')
         # Save after each patient in case we cancel or crash
-        data_io.save_patient(res_name, patient_results, hospitals)
+        data_io.save_patient(res_name, save_results, hospitals)
     if pool:
         pool.close()
     return
+
 
 
 def run_one_scenario(patient, point, these_times, hospital_list,
@@ -117,6 +146,12 @@ def run_one_scenario(patient, point, these_times, hospital_list,
     cbc = these_results.counts_by_center
     cbc = {str(center): count for center, count in cbc.items()}
     results.update(cbc)
+    # add zero counts for hospital that are never optimal
+    zero_c = {
+        str(hospital): 0
+        for hospital in hospital_list if str(hospital) not in results.keys()
+    }
+    results.update(zero_c)
 
     return results
 

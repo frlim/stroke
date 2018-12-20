@@ -133,28 +133,34 @@ def save_patient(outfile, patient_results, hospitals):
     df = pd.read_csv(outfile)
     keys = result_input_keys()
     for results in patient_results:
-        # add zero counts for hospital that are never optimal
-        zero_c = {
-            str(hospital): 0
-            for hospital in hospitals if str(hospital) not in results.keys()
-        }
-        results.update(zero_c)
-        for i, k in enumerate(keys):
-            if i == 0:
-                l = df[k] == results[k]
+        # # add zero counts for hospital that are never optimal
+        # zero_c = {
+        #     str(hospital): 0
+        #     for hospital in hospitals if str(hospital) not in results.keys()
+        # }
+        # results.update(zero_c)
+        try:
+            for i, k in enumerate(keys):
+                if i == 0:
+                    print(df[k])
+                    l = df[k] == results[k]
+                else:
+                    l = l & (df[k] == results[k])
+            if l.any():
+                row_num = df.loc[l].index[0]
+                # transfer old patient number to new result
+                pid = df['Patient'].iloc[row_num]
+                results['Patient'] = pid
+                # replace with new result
+                df.iloc[row_num] = pd.Series(results)
             else:
-                l = l & (df[k] == results[k])
-        if l.any():
-            row_num = df.loc[l].index[0]
-            # transfer old patient number to new result
-            pid = df['Patient'].iloc[row_num]
-            results['Patient'] = pid
-            # replace with new result
-            df.iloc[row_num] = pd.Series(results)
-        else:
-            # append to existing data frame
+                # append to existing data frame
+                df = df.append(pd.Series(results), ignore_index=True)
+        except:
             df = df.append(pd.Series(results), ignore_index=True)
     # Save results
+    # convert to integer
+    df=df.astype('int64',errors='ignore',copy=False)
     df.to_csv(outfile, index=False)
     # To minmize memory usage
     del df
