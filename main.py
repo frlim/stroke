@@ -41,7 +41,7 @@ def run_model(
         times_file,
         hospitals_file,
         fix_performance=False,
-        patient_count=100,
+        patient_count=10,
         simulation_count=1000,
         cores=None,
         base_dir='',  # default: current working directory
@@ -75,51 +75,28 @@ def run_model(
     else:
         pool = mp.Pool(cores)
 
-    run_number = range(50) # cap at 50k
     for pat_num, patient in enumerate(tqdm(patients, desc='Patients')):
-        new_n_sim = 0
-        convergence = False
-        for i in tqdm(run_number,desc='Run Numbers'):
-            patient_results = []
-            for point, these_times in tqdm(
-                    times.items(), desc='Map Points', leave=False):
-                for uses_hospital_performance, hospital_list in hospital_lists:
-                    if pool:
-                        results = pool.apply_async(
-                            run_one_scenario,
-                            (patient, point, these_times, hospital_list,
-                             uses_hospital_performance, simulation_count,
-                             fix_performance, first_pat_num, pat_num))
-                    else:
-                        results = run_one_scenario(
-                            patient, point, these_times, hospital_list,
-                            uses_hospital_performance, simulation_count,
-                            fix_performance, first_pat_num, pat_num)
-                    patient_results.append(results)
-            if pool:
-                to_fetch = tqdm(patient_results, desc='Map Points', leave=False)
-                patient_results = [job.get() for job in to_fetch]
-
-            new_results = pd.DataFrame(patient_results)
-            center_cols = [str(hospital) for hospital in hospital_list]
-
-            new_n_sim += simulation_count
-            if new_n_sim > simulation_count: # after 1st run
-                convergence = np.abs(new_results[center_cols].values/new_n_sim
-                - old_results[center_cols].values/old_n_sim).max() < .1
-                save_counts += new_results[center_cols].values # add on new sim count
-            else:
-                save_counts = new_results[center_cols].values
-            if convergence == True: break
-            old_results = new_results
-            old_n_sim = new_n_sim
-
-        # generate final results
-        count_df = pd.DataFrame(save_counts,columns=center_cols,index=old_results.index)
-        save_results = pd.concat([old_results[NON_COUNT_COLS],count_df],axis=1)
-        save_results = save_results.to_dict('records')
+        patient_results = []
+        for point, these_times in tqdm(
+                times.items(), desc='Map Points', leave=False):
+            for uses_hospital_performance, hospital_list in hospital_lists:
+                if pool:
+                    results = pool.apply_async(
+                        run_one_scenario,
+                        (patient, point, these_times, hospital_list,
+                         uses_hospital_performance, simulation_count,
+                         fix_performance, first_pat_num, pat_num))
+                else:
+                    results = run_one_scenario(
+                        patient, point, these_times, hospital_list,
+                        uses_hospital_performance, simulation_count,
+                        fix_performance, first_pat_num, pat_num)
+                patient_results.append(results)
+        if pool:
+            to_fetch = tqdm(patient_results, desc='Map Points', leave=False)
+            patient_results = [job.get() for job in to_fetch]
         # Save after each patient in case we cancel or crash
-        data_io.save_patient(res_name, save_results, hospitals)
+        data_io.save_patient(res_name, patient_results, hospitals)
     if pool:
         pool.close()
     return
@@ -131,7 +108,7 @@ def run_one_scenario(patient, point, these_times, hospital_list,
                      fix_performance, first_pat_num, pat_num):
     model = sm.StrokeModel(patient, hospital_list)
     model.set_times(these_times)
-    these_results = model.run(
+    these_results = model.run_new(
         n=simulation_count, fix_performance=fix_performance)
     results = collections.OrderedDict()
     results['Location'] = point
@@ -176,10 +153,11 @@ def main(args):
     simulation_count = args.simulations
     kwargs = parse_extra_inputs(args)
 
-    if args.base_dir:
-        base_dir = args.base_dir  # dir to put output file in
-    else:
-        base_dir = ''  # default: current working directory
+    # if args.base_dir:
+    #     base_dir = args.base_dir  # dir to put output file in
+    # else:
+    #     base_dir = ''  # default: current working directory
+    base_dir=''
 
     if hasattr(args, 'locations'):
         locations = args.locations

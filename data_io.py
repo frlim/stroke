@@ -142,7 +142,7 @@ def save_patient(outfile, patient_results, hospitals):
         try:
             for i, k in enumerate(keys):
                 if i == 0:
-                    print(df[k])
+                    # print(df[k])
                     l = df[k] == results[k]
                 else:
                     l = l & (df[k] == results[k])
