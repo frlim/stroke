@@ -5,6 +5,11 @@
 
 # Data
 *.zip
+*MA_n=*.csv
+
+# Trial
+trial.py
+edit.py
 
 # Output
 output/*
