@@ -19,20 +19,46 @@ if __name__ == '__main__':
         'output', nargs='?', default=out_default, help='path to output file')
     args = parser.parse_args()
 
+DATA_TIME_PATH =  Path('data/travel_times/')
+DATA_HOSP_PATH =  Path('data/hospitals/')
+
+class Variables(object):
+    ''' Real data file has diff column names compare to Demo.csv'''
+    def __init__(self,mode='Demo'):
+        self.mode = mode
+        if self.mode == 'Demo':
+            self.center_id_key = "CenterID"
+            self.dtn_keys = ['DTN_1st','DTN_3rd']
+            self.dtp_keys = ['DTP_1st','DTP_3rd']
+            self.times_path = DATA_TIME_PATH/'Demo.csv'
+            self.hosp_path = DATA_HOSP_PATH/'Demo.csv'
+        else:
+            self.center_id_key = "HOSP_KEY"
+            self.dtn_keys = ["IVTPA_P25","IVTPA_P75"]
+            self.dtp_keys = ["ARTPUNC_P25","ARTPUNC_P75"]
+            self.times_path = DATA_TIME_PATH/'MA_n=100.csv'
+            self.hosp_path = DATA_HOSP_PATH/'MA_n=100.csv'
+
+
+var = Variables(mode='Real')
+
 # Load file
 output_path = Path(args.output)
 result = [i for i in glob.glob(str(output_path))]
 file_dir = result[0]
+# OUTPUT_PATH = Path('C:\\Users\\hqt2102\\OneDrive - cumc.columbia.edu\\Stroke\\patrick_stroke\\output')
+# file_dir = OUTPUT_PATH/'times=MA_n=100_hospitals=MA_n=100_random_0_python.csv'
 df = pd.read_csv(file_dir).fillna(0)  # fill empty val wtih 0
 
 # Get the columns' names
-center_columns = df.columns[-20:]
+center_columns = df.columns[9:]
 cnum = len(center_columns)
 sex_age_symp_race = df.columns[[5, 6, 7, 8]]
 ax_title = output_path.name.split('.')[0]  # for axes title
-nloc = 12  # number of locations there are in results
+nloc = df['Location'].unique().shape[0]  # number of locations there are in results
 cloc = nloc - 1  # python indexing
-
+n_psc = (center_columns.str.find('PSC') > -1).sum()
+n_csc = (center_columns.str.find('CSC') > -1).sum()
 
 def get_center_id(str):
     return str.split()[0]
@@ -40,17 +66,15 @@ def get_center_id(str):
 
 # Current stroke model has 2 results: use hospital data == True or False
 # We will use the True result for DTN, DTP from Demo.csv
-df2 = df[0::2]
+if var.mode=='Demo':
+    df2 = df[0::2]
+else:
+    df2 = df
 
 # Get travel times file for the legend
-times_path = str(Path('data/travel_times/Demo.csv'))
-tdf = pd.read_csv(times_path)
+tdf = pd.read_csv(var.times_path)
+hdf = pd.read_csv(var.hosp_path)
 
-# Get travel times file for the legend
-hosp_path = str(Path('data/hospitals/Demo.csv'))
-hdf = pd.read_csv(hosp_path)
-
-# hdf["CenterID"]
 
 
 def plot(ax, loc):
@@ -119,7 +143,7 @@ class ColorTracker:
     def make_color(self, center_name):
         if center_name not in self.dict.keys():
             # generate new color only if not already in dict
-            type = hdf[hdf["CenterID"] == int(
+            type = hdf[hdf[var.center_id_key] == int(
                 center_name)]["CenterType"].iloc[0]
             if type == "Primary":
                 self._psc += 1
@@ -133,21 +157,21 @@ class ColorTracker:
 
     def make_label(self, loc, center_name, optimal):
         travel_time = tdf[center_name].iloc[loc]  # travel time
-        center_info = hdf[hdf["CenterID"] == int(center_name)].iloc[
+        center_info = hdf[hdf[var.center_id_key] == int(center_name)].iloc[
             0]  # pop out of series
         label = center_name
         label += '({:s})'.format(center_info["CenterType"][0])
         if not np.isnan(travel_time):
             label += ' TT:{:.0f}'.format(travel_time)
-            label += ' DTN:({:.0f},{:.0f})'.format(center_info['DTN_1st'],
-                                                   center_info['DTN_3rd'])
+            if var.mode == 'Demo':
+                label += ' DTN:({:.0f},{:.0f})'.format(*center_info[var.dtn_keys].values)
         if center_info["CenterType"] == 'Comprehensive':
-            label += ' DTP:({:.0f},{:.0f})'.format(center_info['DTP_1st'],
-                                                   center_info['DTP_3rd'])
+            if var.mode == 'Demo':
+                label += ' DTP:({:.0f},{:.0f})'.format(*center_info[var.dtp_keys].values)
         else:  # primary center
-            center_logic = hdf['CenterID'] == int(center_name)
+            center_logic = hdf[var.center_id_key] == int(center_name)
             dest = int(hdf[center_logic]['destinationID'].iloc[0])
-            dest_type = hdf[hdf['CenterID'] == dest]['CenterType'].iloc[0][
+            dest_type = hdf[hdf[var.center_id_key] == dest]['CenterType'].iloc[0][
                 0]  # get 1st value
             transfer_time = hdf[center_logic]['transfer_time'].iloc[0]
             label += ' Tran:{:d}({:s}),{:.0f}'.format(
@@ -200,8 +224,6 @@ ax.w_zaxis.set_pane_color((.5, .5, .5))
 box = ax.get_position()
 ax.set_position([box.x0, box.y0, box.width * 0.9,
                  box.height])  # set for 1 time
-n_psc = 16
-n_csc = 4
 psc_colors = cm.get_cmap('autumn')(np.linspace(0, 1, n_psc))
 csc_colors = cm.get_cmap('winter')(np.linspace(0, 1, n_csc))
 colors = ColorTracker()

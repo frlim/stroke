@@ -13,9 +13,8 @@ try:
     from tqdm import tqdm_notebook as tqdm
 except NameError:
     from tqdm import tqdm
+from pathlib import Path
 import numpy as np
-import pandas as pd
-
 
 NON_COUNT_COLS = ['Location','Patient','Varying Hospitals','PSC Count','CSC Count',
     'Sex','Age','Symptoms','RACE']
@@ -101,6 +100,70 @@ def run_model(
         pool.close()
     return
 
+DTN_FILE = Path('E:\\stroke_data')/'deidentified_DTN.xlsx'
+def run_model_real_data(
+        times_file,
+        hospitals_file,
+        dtn_file=DTN_FILE,
+        fix_performance=False,
+        patient_count=10,
+        simulation_count=1000,
+        cores=None,
+        base_dir='',  # default: current working directory
+        locations=None,  # default: run for all location in times_file
+        **kwargs):
+    '''Run the model on the given map points for the given hospitals. The
+        times file should be in data/travel_times and contain travel times to
+        appropriate hospitals. The hospitals file should be in data/hospitals
+        and contain transfer destinations and times for all primary hospitals.
+
+        kwargs -- passed through to inputs.Inputs.random to hold parameters
+                    constant
+    '''
+    hospitals = data_io.get_hospitals_real_data(hospitals_file,dtn_file)
+    hospital_lists = [(True, hospitals)]
+
+    patients = [Patient.random(**kwargs) for _ in range(patient_count)]
+    sex = patients[0].sex
+
+    times = data_io.get_times_real_data(times_file)
+    if locations:  # Not none
+        times = {loc: time for loc, time in times.items() if loc in locations}
+
+    res_name = results_name(base_dir, times_file, hospitals_file,
+                            fix_performance, simulation_count, sex)
+    first_pat_num = data_io.get_next_patient_number(res_name)
+
+    if cores is False:
+        pool = False
+    else:
+        pool = mp.Pool(cores)
+
+    for pat_num, patient in enumerate(tqdm(patients, desc='Patients')):
+        patient_results = []
+        for point, these_times in tqdm(
+                times.items(), desc='Map Points', leave=False):
+            for uses_hospital_performance, hospital_list in hospital_lists:
+                if pool:
+                    results = pool.apply_async(
+                        run_one_scenario,
+                        (patient, point, these_times, hospital_list,
+                         uses_hospital_performance, simulation_count,
+                         fix_performance, first_pat_num, pat_num))
+                else:
+                    results = run_one_scenario(
+                        patient, point, these_times, hospital_list,
+                        uses_hospital_performance, simulation_count,
+                        fix_performance, first_pat_num, pat_num)
+                patient_results.append(results)
+        if pool:
+            to_fetch = tqdm(patient_results, desc='Map Points', leave=False)
+            patient_results = [job.get() for job in to_fetch]
+        # Save after each patient in case we cancel or crash
+        data_io.save_patient(res_name, patient_results, hospitals)
+    if pool:
+        pool.close()
+    return
 
 
 def run_one_scenario(patient, point, these_times, hospital_list,
@@ -169,7 +232,7 @@ def main(args):
     else:
         cores = False
 
-    run_model(
+    run_model_real_data(
         times_file,
         hospitals_file,
         patient_count=patient_count,
@@ -182,7 +245,7 @@ def main(args):
 
 
 if __name__ == '__main__':
-    p_default = 10
+    p_default = 2
     s_default = 1000
 
     parser = argparse.ArgumentParser()

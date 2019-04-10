@@ -7,6 +7,7 @@ import warnings
 import stroke.stroke_center as sc
 import pandas as pd
 import gc
+import xlwings as xw
 
 
 def get_hospitals(hospital_file, use_default_times=False):
@@ -71,6 +72,100 @@ def get_hospitals(hospital_file, use_default_times=False):
         prim.add_transfer_destination(transfer_destination, transfer_time)
 
     return list(primaries.values()) + list(comprehensives.values())
+
+
+def _load_dtn_file(dtn_file, cell_range):
+    sheet = xw.Book(str(dtn_file)).sheets[0]
+    return sheet[cell_range].options(
+        convert=pd.DataFrame, index=False, header=True).value
+
+
+def get_hospitals_real_data(hospital_file, dtn_file, cell_range='A1:M275'):
+    '''Generate a list of StrokeCenters from a csv
+        file containing transfer destinations and times. Optionally use
+        recorded hospital performance metrics. The CSV is assumed to be
+        formatted like `data/hospitals/Demo.csv`
+
+        dtn_file: excel spreadsheet, deidentified and password-protected
+
+        if a hospital doesn't have DTN or DTP time, use default distributions
+        in stroke_center.py
+    '''
+    # load spreadsheet
+    dtn = _load_dtn_file(dtn_file, cell_range)
+    hospitals = pd.read_csv(hospital_file)
+    hospitals_dtn = hospitals.merge(dtn, on='HOSP_KEY', how='left')
+    primaries = {}
+    destinations = {}
+    comprehensives = {}
+    dtn_cols = ['IVTPA_P25','IVTPA_MEDIAN','IVTPA_P75']
+    dtp_cols = ['ARTPUNC_P25','ARTPUNC_MEDIAN','ARTPUNC_P75']
+    for idx, row in hospitals_dtn.iterrows():
+        center_id = int(row['HOSP_KEY'])
+        center_type = row['CenterType']
+        name = str(center_id)
+        long_name = f'Center {center_id}'
+        dtn_availability = row[dtn_cols].notna().all()
+        if dtn_availability:
+            dtn_dist = sc.HospitalTimeDistribution(
+                float(row['IVTPA_P25']), float(row['IVTPA_MEDIAN']),
+                float(row['IVTPA_P75']))
+        else:
+            if center_type == 'Primary':
+                dtn_dist = sc.PRIMARY_DIST
+            else:
+                dtn_dist = sc.COMP_DIST
+        if center_type == 'Comprehensive':
+            dtp_availability = row[dtp_cols].notna().all()
+            if dtp_availability:
+                dtp_dist = sc.HospitalTimeDistribution(
+                    float(row['ARTPUNC_P25']), float(row['ARTPUNC_MEDIAN']),
+                    float(row['ARTPUNC_P75']))
+            else:
+                dtp_dist = sc.DTP_DIST
+        else:
+            dtp_dist = None
+
+        if center_type == 'Comprehensive':
+            comp = sc.StrokeCenter(
+                long_name,
+                name,
+                sc.CenterType.COMPREHENSIVE,
+                center_id,
+                dtn_dist=dtn_dist,
+                dtp_dist=dtp_dist)
+            comprehensives[center_id] = comp
+        elif center_type == 'Primary':
+            try:
+                transfer_id = int(float(row['destinationID']))
+                transfer_time = float(row['transfer_time'])
+                destinations[center_id] = (transfer_id, transfer_time)
+            except ValueError:
+                warnings.warn(f'No transfer destination for {long_name}')
+            prim = sc.StrokeCenter(
+                long_name,
+                name,
+                sc.CenterType.PRIMARY,
+                center_id,
+                dtn_dist=dtn_dist)
+            primaries[center_id] = prim
+
+    for primary_id, (transfer_id, transfer_time) in destinations.items():
+        prim = primaries[primary_id]
+        transfer_destination = comprehensives[transfer_id]
+        prim.add_transfer_destination(transfer_destination, transfer_time)
+
+    return list(primaries.values()) + list(comprehensives.values())
+
+
+def get_times_real_data(times_file):
+    '''
+    Generate a dictionary of dictionaries representing each point in the given
+        file. Outer keys are location IDs, inner dictionaries have hospital IDs
+        as keys and travel times as values. The input file is assumed to be
+        formatted like `data/travel_times/Demo.csv`.
+    '''
+    return pd.read_csv(times_file).set_index('ID').to_dict('index')
 
 
 def get_times(times_file):
@@ -160,7 +255,7 @@ def save_patient(outfile, patient_results, hospitals):
             df = df.append(pd.Series(results), ignore_index=True)
     # Save results
     # convert to integer
-    df=df.astype('int64',errors='ignore',copy=False)
+    df = df.astype('int64', errors='ignore', copy=False)
     df.to_csv(outfile, index=False)
     # To minmize memory usage
     del df

@@ -8,6 +8,10 @@ edit.py
 
 # Data
 *.zip
+*MA_n=*.csv
+
+# Trial
+trial.py
 
 # Output
 output/*
