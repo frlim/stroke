@@ -3,7 +3,7 @@ Umbrella class to hold and run stroke triage problems
 """
 import numpy as np
 from . import costs, times, ais_outcomes, cohort, results, stroke_center as sc
-
+import pandas as pd
 
 class StrokeModel:
     """Store patient and hospital information and run the model"""
@@ -63,3 +63,35 @@ class StrokeModel:
         markov = cohort.Population(self._patient, outcomes)
         markov.analyze()
         return results.Results(markov)
+
+
+    def run_new(self, n=1000, add_time_uncertainty=True, add_lvo_uncertainty=True,
+            fix_performance=False):
+        """Run the model, determine num of simulation by convergence"""
+        costs.Costs.inflate(2016)
+        convergence = False
+
+        n_sim = int(n/2)
+        c =0
+        while not convergence:
+            ais_times = times.IschemicTimes(self._patient, self.hospitals, n_sim,
+                                            add_time_uncertainty,
+                                            add_lvo_uncertainty,
+                                            fix_performance)
+            ais_model = ais_outcomes.IschemicModel(ais_times)
+            outcomes = ais_model.run_all_strategies()
+            markov = cohort.Population(self._patient, outcomes)
+            markov.analyze()
+            markov_results = results.Results(markov)
+            cbc = markov_results.counts_by_center
+            cbc = {str(center): count for center, count in cbc.items()}
+            df_cbc = pd.DataFrame.from_dict(cbc,orient='index',columns=['count'])/n_sim
+            if c > 0:
+                convergence = ((df_cbc-old_df_cbc).abs().max() < .01).any()
+            elif c > 19:
+                convergence = True # repeat the runs 20 times max
+            n_sim *=2
+            c+=1
+            old_df_cbc = df_cbc
+            if not convergence: print(f'repeating for nsim of {n_sim}')
+        return markov_results

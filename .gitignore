@@ -9,7 +9,7 @@
 
 # Trial
 trial.py
-edit.py
+edit*.py
 
 # Output
 output/*
