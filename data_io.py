@@ -22,7 +22,7 @@ def get_hospitals(hospital_file, use_default_times=False):
         reader = csv.DictReader(f)
 
         for row in reader:
-            center_id = int(row['CenterID'])
+            center_id = int(row['HOSP_KEY'])
             center_type = row['CenterType']
             name = str(center_id)
             long_name = f'Center {center_id}'

@@ -24,7 +24,7 @@ if __name__ == '__main__':
         age=age,
         race=race,
         time_since_symptoms=time_since_symptoms)
-    main.main(args)
+    main.main_default_dtn(args)
 
     # upper = 1
     #
