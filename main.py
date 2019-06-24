@@ -122,7 +122,7 @@ def run_model_defaul_dtn(
         for now, use fix_performance = True to make it fair for the hospitals
     '''
     hospitals = data_io.get_hospitals(hospitals_file,use_default_times=True)
-    hospital_lists = [(False, hospitals)]
+    hospital_lists = [(False, hospitals)] # false means use same DTN distribution for all hospitals
 
     patients = [Patient.random(**kwargs) for _ in range(patient_count)]
     sex = patients[0].sex
