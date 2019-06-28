@@ -8,6 +8,7 @@ import stroke.stroke_center as sc
 import pandas as pd
 import gc
 import xlwings as xw
+from pathlib import Path
 
 def get_hospitals(hospital_file, use_default_times=False):
     '''Generate a list of StrokeCenters from a csv
@@ -205,6 +206,16 @@ def get_header(hospitals):
     fieldnames += [str(hospital) for hospital in hospitals]
     return fieldnames
 
+def write_detailed_markov_outcomes(markov,fileprefix,point):
+    filedir = Path(fileprefix)
+    fileparent_dir = filedir.parent
+    filename_prefix = filedir.stem+f'_loc={point}'
+    qalys_df = pd.DataFrame(markov.qalys)
+    costs_df = pd.DataFrame(markov.costs)
+    qalys_df.index.name='Simulation'
+    costs_df.index.name='Simulation'
+    qalys_df.to_csv(fileparent_dir/(filename_prefix+'_qalys.csv'))
+    costs_df.to_csv(fileparent_dir/(filename_prefix+'_costs.csv'))
 
 def save_patient(outfile, patient_results, hospitals):
     '''

@@ -62,7 +62,7 @@ class StrokeModel:
         outcomes = ais_model.run_all_strategies()
         markov = cohort.Population(self._patient, outcomes)
         markov.analyze()
-        return results.Results(markov)
+        return results.Results(markov),markov
 
 
     def run_new(self, n=1000, add_time_uncertainty=True, add_lvo_uncertainty=True,

@@ -6,7 +6,6 @@ import warnings
 from collections import Counter
 import numpy as np
 
-
 @functools.total_ordering
 class FormattedResult:
     """
