@@ -6,14 +6,16 @@ from stroke import constants
 
 if __name__ == '__main__':
     # change to data
-    hospital_path = str(Path('data/hospitals/MA_n=100.csv'))
-    times_path = str(Path('data/travel_times/MA_n=100.csv'))
+    hospital_path =Path('data/hospitals/MA_n=100.csv')
+    times_path = Path('data/travel_times/MA_n=100.csv')
 
     sex = constants.Sex.MALE
     age=70
     race=8
     time_since_symptoms=50
-    s_default = 1000
+    s_default = 10
+    sex_str = 'male' if sex==constants.Sex.MALE else 'female'
+    res_name=f'output/times={times_path.stem}_hospitals={hospital_path.stem}_sex={sex_str}_age={age}_race={race}_symptom={time_since_symptoms}_nsim={s_default}_beAHA.csv'
     args = Namespace(
         patients=1,
         simulations=s_default,
@@ -23,8 +25,24 @@ if __name__ == '__main__':
         sex=sex,
         age=age,
         race=race,
-        time_since_symptoms=time_since_symptoms)
+        time_since_symptoms=time_since_symptoms,
+        res_name=res_name)
     main.main_default_dtn(args)
+
+    res_name=f'output/times={times_path.stem}_hospitals={hospital_path.stem}_sex={sex_str}_age={age}_race={race}_symptom={time_since_symptoms}_nsim={s_default}_afAHA.csv'
+    args = Namespace(
+        patients=1,
+        simulations=s_default,
+        multicore=True,
+        hospital_file=str(hospital_path),
+        times_file=str(times_path),
+        sex=sex,
+        age=age,
+        race=race,
+        time_since_symptoms=time_since_symptoms,
+        res_name=res_name)
+    main.main(args)
+
 
     # upper = 1
     #

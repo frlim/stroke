@@ -45,6 +45,7 @@ def run_model(
         cores=None,
         base_dir='',  # default: current working directory
         locations=None,  # default: run for all location in times_file
+        res_name=None,
         **kwargs):
     '''Run the model on the given map points for the given hospitals. The
         times file should be in data/travel_times and contain travel times to
@@ -65,7 +66,8 @@ def run_model(
     if locations:  # Not none
         times = {loc: time for loc, time in times.items() if loc in locations}
 
-    res_name = results_name(base_dir, times_file, hospitals_file,
+    if not res_name:
+        res_name = results_name(base_dir, times_file, hospitals_file,
                             fix_performance, simulation_count, sex)
     first_pat_num = data_io.get_next_patient_number(res_name)
 
@@ -109,6 +111,7 @@ def run_model_defaul_dtn(
         cores=None,
         base_dir='',  # default: current working directory
         locations=None,  # default: run for all location in times_file
+        res_name=None,
         **kwargs):
     '''Run the model on the given map points for the given hospitals. The
         times file should be in data/travel_times and contain travel times to
@@ -131,7 +134,8 @@ def run_model_defaul_dtn(
     if locations:  # Not none
         times = {loc: time for loc, time in times.items() if loc in locations}
 
-    res_name = results_name(base_dir, times_file, hospitals_file,
+    if not res_name:
+        res_name = results_name(base_dir, times_file, hospitals_file,
                             fix_performance, simulation_count, sex)
     first_pat_num = data_io.get_next_patient_number(res_name)
 
@@ -177,6 +181,7 @@ def run_model_real_data(
         simulation_count=1000,
         cores=None,
         base_dir='',  # default: current working directory
+        res_name=None,
         locations=None,  # default: run for all location in times_file
         **kwargs):
     '''Run the model on the given map points for the given hospitals. The
@@ -196,8 +201,10 @@ def run_model_real_data(
     if locations:  # Not none
         times = {loc: time for loc, time in times.items() if loc in locations}
 
-    res_name = results_name(base_dir, times_file, hospitals_file,
+    if not res_name:
+        res_name = results_name(base_dir, times_file, hospitals_file,
                             fix_performance, simulation_count, sex)
+
     first_pat_num = data_io.get_next_patient_number(res_name)
 
     if cores is False:
@@ -289,6 +296,10 @@ def main(args):
         locations = args.locations
     else:
         locations = None
+    if hasattr(args, 'res_name'):
+        res_name = args.res_name
+    else:
+        res_name=None
 
     if args.multicore:
         cores = None
@@ -304,6 +315,7 @@ def main(args):
         cores=cores,
         base_dir=base_dir,
         locations=locations,
+        res_name =res_name,
         **kwargs)
 
 def main_default_dtn(args):
@@ -323,6 +335,10 @@ def main_default_dtn(args):
         locations = args.locations
     else:
         locations = None
+    if hasattr(args, 'res_name'):
+        res_name = args.res_name
+    else:
+        res_name=None
 
     if args.multicore:
         cores = None
@@ -338,6 +354,7 @@ def main_default_dtn(args):
         cores=cores,
         base_dir=base_dir,
         locations=locations,
+        res_name =res_name,
         **kwargs)
 
 if __name__ == '__main__':
