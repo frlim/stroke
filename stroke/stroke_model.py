@@ -4,6 +4,7 @@ Umbrella class to hold and run stroke triage problems
 import numpy as np
 from . import costs, times, ais_outcomes, cohort, results, stroke_center as sc
 import pandas as pd
+import os
 
 class StrokeModel:
     """Store patient and hospital information and run the model"""
@@ -80,7 +81,7 @@ class StrokeModel:
         costs.Costs.inflate(2016)
         convergence = False
 
-        n_sim = 2000 
+        n_sim = 2000
         NRUN_MAX=20
         old_df_cbc = None
         for c in range(NRUN_MAX):

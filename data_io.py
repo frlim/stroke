@@ -7,7 +7,7 @@ import warnings
 import stroke.stroke_center as sc
 import pandas as pd
 import gc
-import xlwings as xw
+if os.name =='nt': import xlwings as xw
 from pathlib import Path
 
 def get_hospitals(hospital_file, use_default_times=False):
