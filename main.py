@@ -170,8 +170,10 @@ def run_model_defaul_dtn(
     return
 
 
-
-DTN_FILE = Path('Z:\\stroke_data')/'deidentified_DTN.xlsx'
+if os.name=='nt':
+    DTN_FILE = Path('Z:\\stroke_data')/'deidentified_DTN.xlsx'
+else:
+    DTN_FILE = Path('/home/hqt2102/deidentified_stroke_data')/'deidentified_DTN_uc.xlsx'
 def run_model_real_data(
         times_file,
         hospitals_file,

@@ -79,6 +79,9 @@ def _load_dtn_file(dtn_file, cell_range='A1:M275'):
     return sheet[cell_range].options(
         convert=pd.DataFrame, index=False, header=True).value
 
+def _load_dtn_file_uc(dtn_file):
+    return pd.read_excel(dtn_file)
+
 
 def get_hospitals_real_data(hospital_file, dtn_file, cell_range='A1:M275'):
     '''Generate a list of StrokeCenters from a csv
@@ -90,7 +93,10 @@ def get_hospitals_real_data(hospital_file, dtn_file, cell_range='A1:M275'):
         in stroke_center.py
     '''
     # load spreadsheet
-    dtn = _load_dtn_file(dtn_file, cell_range)
+    if os.name =='nt':
+        dtn = _load_dtn_file(dtn_file, cell_range)
+    else:
+        dtn = _load_dtn_file(dtn_file)
     hospitals = pd.read_csv(hospital_file)
     hospitals_dtn = hospitals.merge(dtn, on='HOSP_KEY', how='left')
     primaries = {}
