@@ -13,8 +13,7 @@ try:
     from tqdm import tqdm_notebook as tqdm
 except NameError:
     from tqdm import tqdm
-from pathlib import Path
-import numpy as np
+import paths
 
 NON_COUNT_COLS = ['Location','Patient','Varying Hospitals','PSC Count','CSC Count',
     'Sex','Age','Symptoms','RACE']
@@ -168,16 +167,12 @@ def run_model_defaul_dtn(
     if pool:
         pool.close()
     return
-    
 
-if os.name=='nt':
-    DTN_FILE = Path('Z:\\stroke_data')/'deidentified_DTN.xlsx'
-else:
-    DTN_FILE = Path('/home/hqt2102/deidentified_stroke_data')/'deidentified_DTN_uc.xlsx'
+
 def run_model_real_data(
         times_file,
         hospitals_file,
-        dtn_file=DTN_FILE,
+        dtn_file=paths.DTN_FILE,
         fix_performance=False,
         patient_count=10,
         simulation_count=1000,

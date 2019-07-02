@@ -3,15 +3,13 @@ import main
 from argparse import Namespace
 from stroke import constants
 import os
+import paths
 
 if __name__ == '__main__':
-    # change to data
-    hospital_path =Path('data/hospitals/MA_n=100.csv')
-    times_path = Path('data/travel_times/MA_n=100.csv')
-    if os.name =='nt':
-        res_name_prefix = Path('E:/stroke_model_output/output_070119')
-    else:
-        res_name_prefix = Path('output/output_070119')
+    # get file paths base on OS 
+    res_name_prefix = paths.RES_NAME_PREFIX
+    hospital_path = paths.HOSPITAL_PATH
+    times_path = paths.TIMES_PATH
     s_default = 'auto'
     upper = 1
     for sex in [constants.Sex.MALE,constants.Sex.FEMALE]:
