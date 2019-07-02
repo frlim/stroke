@@ -240,7 +240,15 @@ def run_one_scenario(patient, point, these_times, hospital_list,
                      fix_performance, first_pat_num, pat_num,res_name=None):
     model = sm.StrokeModel(patient, hospital_list)
     model.set_times(these_times)
-    these_results,markov_results = model.run_new(
+    if str(simulation_count)=='auto':
+        run_model = model.run_new
+    else:
+        try:
+            simulation_count = int(simulation_count)
+            run_model = model.run
+        except ValueError:
+            raise Exception("Num of simulation is not an integer!")
+    these_results,markov_results = run_model(
         n=simulation_count, fix_performance=fix_performance)
     if res_name:
         # output details of each simulation: Cost and QALY
