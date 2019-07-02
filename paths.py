@@ -10,7 +10,7 @@ if os.name=='nt': #LOCAL
 else: # FOR TED
     _data_path = Path('/home/hqt2102/deidentified_stroke_data')
     DTN_FILE = _data_path/'deidentified_DTN_uc.xlsx'
-    RES_NAME_PREFIX  = Path('output/output_070119')
+    RES_NAME_PREFIX  = Path('/sda1/stroke_model_output/output_070119')
     HOSPITAL_PATH = _data_path/'hospitals/MA_n=100.csv'
     TIMES_PATH = _data_path/'travel_times/MA_n=100.csv'
 
