@@ -80,7 +80,7 @@ class StrokeModel:
         costs.Costs.inflate(2016)
         convergence = False
 
-        n_sim = 500 # always start with 500 simulation so that min_sim ran will be 1000
+        n_sim = 2000 
         NRUN_MAX=20
         old_df_cbc = None
         for c in range(NRUN_MAX):
@@ -94,10 +94,7 @@ class StrokeModel:
             markov.analyze()
             markov_results = results.Results(markov)
             convergence,df_cbc = self._check_convergence(markov_results,n_sim,old_df_cbc)
-            if c == 0:
-                n_sim +=500
-            else:
-                n_sim +=1000*c
+            n_sim += 1000*(c+1)
             old_df_cbc = df_cbc
             if convergence:
                 break
