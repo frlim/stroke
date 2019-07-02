@@ -81,7 +81,7 @@ class StrokeModel:
         costs.Costs.inflate(2016)
         convergence = False
 
-        n_sim = 2000
+        n_sim = 5000
         NRUN_MAX=20
         old_df_cbc = None
         for c in range(NRUN_MAX):
