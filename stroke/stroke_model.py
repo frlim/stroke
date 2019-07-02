@@ -64,6 +64,15 @@ class StrokeModel:
         markov.analyze()
         return results.Results(markov),markov
 
+    def _check_convergence(self,markov_results,n_sim,old_df_cbc=None):
+        CONVERGENCE_THRESH = .01 # out of 1 (1%)
+        cbc = {str(center): count for center, count in markov_results.counts_by_center.items()}
+        df_cbc = pd.DataFrame.from_dict(cbc,orient='index',columns=['count'])/n_sim
+        if old_df_cbc is None:
+            convergence = False # first iteration, convergence is False to repeat
+        else:
+            convergence = ((df_cbc-old_df_cbc).abs().max() <= CONVERGENCE_THRESH).any()
+        return convergence,df_cbc
 
     def run_new(self, n=1000, add_time_uncertainty=True, add_lvo_uncertainty=True,
             fix_performance=False):
@@ -71,9 +80,10 @@ class StrokeModel:
         costs.Costs.inflate(2016)
         convergence = False
 
-        n_sim = int(n/2)
-        c =0
-        while not convergence:
+        n_sim = 500 # always start with 500 simulation so that min_sim ran will be 1000
+        NRUN_MAX=20
+        old_df_cbc = None
+        for c in range(NRUN_MAX):
             ais_times = times.IschemicTimes(self._patient, self.hospitals, n_sim,
                                             add_time_uncertainty,
                                             add_lvo_uncertainty,
@@ -83,15 +93,14 @@ class StrokeModel:
             markov = cohort.Population(self._patient, outcomes)
             markov.analyze()
             markov_results = results.Results(markov)
-            cbc = markov_results.counts_by_center
-            cbc = {str(center): count for center, count in cbc.items()}
-            df_cbc = pd.DataFrame.from_dict(cbc,orient='index',columns=['count'])/n_sim
-            if c > 0:
-                convergence = ((df_cbc-old_df_cbc).abs().max() < .01).any()
-            elif c > 19:
-                convergence = True # repeat the runs 20 times max
-            n_sim *=2
-            c+=1
+            convergence,df_cbc = self._check_convergence(markov_results,n_sim,old_df_cbc)
+            if c == 0:
+                n_sim +=500
+            else:
+                n_sim +=1000*c
             old_df_cbc = df_cbc
-            if not convergence: print(f'repeating for nsim of {n_sim}')
-        return markov_results
+            if convergence:
+                break
+            else:
+                print(f'repeating for nsim of {n_sim}')
+        return markov_results,markov

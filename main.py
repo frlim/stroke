@@ -86,12 +86,12 @@ def run_model(
                         run_one_scenario,
                         (patient, point, these_times, hospital_list,
                          uses_hospital_performance, simulation_count,
-                         fix_performance, first_pat_num, pat_num))
+                         fix_performance, first_pat_num, pat_num,res_name))
                 else:
                     results = run_one_scenario(
                         patient, point, these_times, hospital_list,
                         uses_hospital_performance, simulation_count,
-                        fix_performance, first_pat_num, pat_num)
+                        fix_performance, first_pat_num, pat_num,res_name)
                 patient_results.append(results)
         if pool:
             to_fetch = tqdm(patient_results, desc='Map Points', leave=False)
@@ -153,16 +153,12 @@ def run_model_defaul_dtn(
                         run_one_scenario,
                         (patient, point, these_times, hospital_list,
                          uses_hospital_performance, simulation_count,
-                         fix_performance, first_pat_num, pat_num))
+                         fix_performance, first_pat_num, pat_num,res_name))
                 else:
                     results = run_one_scenario(
                         patient, point, these_times, hospital_list,
                         uses_hospital_performance, simulation_count,
-                        fix_performance, first_pat_num, pat_num)
-                # output details of each simulation: Cost and QALY
-                #dimension: simulation# -> row index,hospital-> columns
-                results,markov_results = results[0],results[1]
-                data_io.write_detailed_markov_outcomes(markov_results,res_name,point)
+                        fix_performance, first_pat_num, pat_num,res_name)
                 patient_results.append(results)
         if pool:
             to_fetch = tqdm(patient_results, desc='Map Points', leave=False)
@@ -225,16 +221,12 @@ def run_model_real_data(
                         run_one_scenario,
                         (patient, point, these_times, hospital_list,
                          uses_hospital_performance, simulation_count,
-                         fix_performance, first_pat_num, pat_num))
+                         fix_performance, first_pat_num, pat_num,res_name))
                 else:
                     results = run_one_scenario(
                         patient, point, these_times, hospital_list,
                         uses_hospital_performance, simulation_count,
-                        fix_performance, first_pat_num, pat_num)
-                # output details of each simulation: Cost and QALY
-                #dimension: simulation# -> row index,hospital-> columns
-                results,markov_results = results[0],results[1]
-                data_io.write_detailed_markov_outcomes(markov_results,res_name,point)
+                        fix_performance, first_pat_num, pat_num,res_name)
                 patient_results.append(results)
         if pool:
             to_fetch = tqdm(patient_results, desc='Map Points', leave=False)
@@ -248,11 +240,15 @@ def run_model_real_data(
 
 def run_one_scenario(patient, point, these_times, hospital_list,
                      uses_hospital_performance, simulation_count,
-                     fix_performance, first_pat_num, pat_num):
+                     fix_performance, first_pat_num, pat_num,res_name=None):
     model = sm.StrokeModel(patient, hospital_list)
     model.set_times(these_times)
-    these_results,markov_results = model.run(
+    these_results,markov_results = model.run_new(
         n=simulation_count, fix_performance=fix_performance)
+    if res_name:
+        # output details of each simulation: Cost and QALY
+        #dimension: simulation# -> row index,hospital-> columns
+        data_io.write_detailed_markov_outcomes(markov_results,res_name,point)
     results = collections.OrderedDict()
     results['Location'] = point
     results['Patient'] = first_pat_num + pat_num
@@ -272,7 +268,7 @@ def run_one_scenario(patient, point, these_times, hospital_list,
         for hospital in hospital_list if str(hospital) not in results.keys()
     }
     results.update(zero_c)
-    return [results,markov_results]
+    return results
 
 
 def parse_extra_inputs(args):

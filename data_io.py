@@ -23,7 +23,10 @@ def get_hospitals(hospital_file, use_default_times=False):
         reader = csv.DictReader(f)
 
         for row in reader:
-            center_id = int(row['HOSP_KEY'])
+            try:
+                center_id = int(row['HOSP_KEY'])
+            except:
+                center_id = int(row['CenterID'])
             center_type = row['CenterType']
             name = str(center_id)
             long_name = f'Center {center_id}'
@@ -212,8 +215,11 @@ def write_detailed_markov_outcomes(markov,fileprefix,point):
     filename_prefix = filedir.stem+f'_loc={point}'
     qalys_df = pd.DataFrame(markov.qalys)
     costs_df = pd.DataFrame(markov.costs)
+    strategies = [str(strategy) for strategy in markov.strategies]
     qalys_df.index.name='Simulation'
     costs_df.index.name='Simulation'
+    qalys_df.columns=strategies
+    costs_df.columns=strategies
     qalys_df.to_csv(fileparent_dir/(filename_prefix+'_qalys.csv'))
     costs_df.to_csv(fileparent_dir/(filename_prefix+'_costs.csv'))
 
