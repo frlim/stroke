@@ -211,13 +211,17 @@ def write_detailed_markov_outcomes(markov,fileprefix,point):
     filename_prefix = filedir.stem+f'_loc={point}'
     qalys_df = pd.DataFrame(markov.qalys)
     costs_df = pd.DataFrame(markov.costs)
+    lys_df = pd.DataFrame(markov.lys)
     strategies = [str(strategy) for strategy in markov.strategies]
     qalys_df.index.name='Simulation'
     costs_df.index.name='Simulation'
+    lys_df.index.name='Simulation'
     qalys_df.columns=strategies
     costs_df.columns=strategies
+    lys_df.columns=strategies
     qalys_df.to_csv(fileparent_dir/(filename_prefix+'_qalys.csv'))
     costs_df.to_csv(fileparent_dir/(filename_prefix+'_costs.csv'))
+    lys_df.to_csv(fileparent_dir/(filename_prefix+'_lys.csv'))
 
 def save_patient(outfile, patient_results, hospitals):
     '''

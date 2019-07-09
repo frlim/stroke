@@ -34,10 +34,13 @@ class Population:
         """
         self._run_markov()
         self._get_qalys_per_year()
+        self._get_lys_per_year()
         self._get_costs_per_year()
         self.qalys = simpsons_1_3rd_correction(self._qalys_per_year,
                                                self.horizon)
         self.costs = simpsons_1_3rd_correction(self._costs_per_year,
+                                               self.horizon)
+        self.lys = simpsons_1_3rd_correction(self._lys_per_year,
                                                self.horizon)
 
     def _break_into_states(self, ais_outcomes):
@@ -120,6 +123,18 @@ class Population:
             qalys.append(qaly)
 
         self._qalys_per_year = qalys
+
+    def _get_lys_per_year(self):
+        """
+        Generate a list of un-adjusted life years at each year
+        """
+        lys = []
+        for year, states in enumerate(self._states_per_year):
+            ly = 0
+            for state in range(constants.States.DEATH):
+                ly += states[:, :, state]
+            lys.append(ly)
+        self._lys_per_year = lys
 
     def _get_costs_per_year(self):
         """

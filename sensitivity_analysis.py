@@ -8,8 +8,8 @@ from types import SimpleNamespace
 
 SEX_MALE = constants.Sex.MALE
 SEX_FEMALE = constants.Sex.FEMALE
-AGE_MIN = 60
-AGE_MAX = 85
+AGE_MIN = 70
+AGE_MAX = 80
 RACE_MIN = 0
 RACE_MAX = 9
 SYMP_MIN = 10
@@ -21,11 +21,11 @@ if __name__ == '__main__':
     hospital_path = paths.HOSPITAL_PATH
     times_path = paths.TIMES_PATH
     #s_default - 'auto' for automatic mode or else enter an integer
-    s_default = 'auto'
+    s_default = 100 #'auto'
     upper = 1
 
     # Input in boolean and model parameters, the rest will be taken care of by code logic
-    resume = True
+    resume = False
     resume_parameters={}
     resume_parameters["sex"] = SEX_MALE
     resume_parameters["age"] = 65

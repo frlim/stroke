@@ -4,7 +4,7 @@ import pandas as pd
 
 if os.name=='nt': #LOCAL
     DTN_FILE = Path('Z:\\stroke_data')/'deidentified_DTN.xlsx'
-    RES_NAME_PREFIX = Path('E:/stroke_model_output/output_070119')
+    RES_NAME_PREFIX = Path('E:/stroke_model_output/output_070819')
     HOSPITAL_PATH =Path('data/hospitals/MA_n=100.csv')
     TIMES_PATH = Path('data/travel_times/MA_n=100.csv')
 else: # FOR TED
