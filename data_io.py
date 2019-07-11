@@ -10,6 +10,7 @@ import gc
 if os.name =='nt': import xlwings as xw
 from pathlib import Path
 import paths
+from stroke import constants
 
 def get_hospitals(hospital_file, use_default_times=False):
     '''Generate a list of StrokeCenters from a csv
@@ -222,6 +223,31 @@ def write_detailed_markov_outcomes(markov,fileprefix,point):
     qalys_df.to_csv(fileparent_dir/(filename_prefix+'_qalys.csv'))
     costs_df.to_csv(fileparent_dir/(filename_prefix+'_costs.csv'))
     lys_df.to_csv(fileparent_dir/(filename_prefix+'_lys.csv'))
+
+def write_out_p_good(markov,fileprefix,point):
+    filedir = Path(fileprefix)
+    fileparent_dir = filedir.parent
+    filename = fileparent_dir/(filedir.stem+f'_loc={point}_p_good.csv')
+    p_good = markov.ais_outcomes.p_good
+    strategies = markov.ais_outcomes.strategies
+    df = pd.DataFrame(p_good,columns=strategies)
+    df.index.name='Simulation'
+    df.to_csv(filename)
+
+def write_out_times(times,fileprefix,point):
+    filedir = Path(fileprefix)
+    fileparent_dir = filedir.parent
+    filename = fileparent_dir/(filedir.stem+f'_loc={point}_times.csv')
+    primaries_times = times.onset_needle_primary
+    p1 = pd.DataFrame(primaries_times,columns=times.get_strategies(constants.StrategyKind.PRIMARY))
+    comprehensives_times = times.onset_needle_comprehensive
+    c1 = pd.DataFrame(comprehensives_times,columns=times.get_strategies(constants.StrategyKind.COMPREHENSIVE))
+    onset_evt_ship = times.onset_evt_ship
+    p2 = pd.DataFrame(onset_evt_ship,columns=times.get_strategies(constants.StrategyKind.DRIP_AND_SHIP))
+    # onset_evt_noship = times.onset_evt_noship
+    df = pd.concat([p1,p2,c1],axis=1)
+    df.index.name='Simulation'
+    df.to_csv(filename)
 
 def save_patient(outfile, patient_results, hospitals):
     '''

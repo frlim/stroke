@@ -43,6 +43,10 @@ PRIMARY_DIST = HospitalTimeDistribution(47, 61, 83)
 COMP_DIST = HospitalTimeDistribution(39, 52, 70)
 DTP_DIST = HospitalTimeDistribution(83, 145, 192)
 
+# PRIMARY_DIST = HospitalTimeDistribution(10, 10, 10)
+# COMP_DIST = HospitalTimeDistribution(60*4, 60*4, 60*4)
+# DTP_DIST = HospitalTimeDistribution(83, 83, 83)
+#
 
 class StrokeCenter:
 

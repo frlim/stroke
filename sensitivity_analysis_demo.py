@@ -7,12 +7,12 @@ from types import SimpleNamespace
 
 SEX_MALE = constants.Sex.MALE
 SEX_FEMALE = constants.Sex.FEMALE
-AGE_MIN = 60
-AGE_MAX = 85
-RACE_MIN = 0
-RACE_MAX = 9
-SYMP_MIN = 10
-SYMP_MAX = 100
+AGE_MIN = 75
+AGE_MAX = 75
+RACE_MIN = 4
+RACE_MAX = 4
+SYMP_MIN = 40
+SYMP_MAX = 40
 
 if __name__ == '__main__':
     # get file paths base on OS
@@ -45,6 +45,7 @@ if __name__ == '__main__':
     resume_parameters = SimpleNamespace(**resume_parameters)
 
     sex_list = [SEX_MALE,SEX_FEMALE]
+    sex_list=[SEX_MALE]
     if resume_parameters.sex_resume & (resume_parameters.sex == SEX_FEMALE):
         sex_list = [SEX_FEMALE]
     for sex in sex_list:

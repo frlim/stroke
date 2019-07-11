@@ -248,12 +248,15 @@ def run_one_scenario(patient, point, these_times, hospital_list,
             run_model = model.run
         except ValueError:
             raise Exception("Num of simulation is not an integer!")
-    these_results,markov_results = run_model(
+    these_results,markov_results,ais_times = run_model(
         n=simulation_count, fix_performance=fix_performance)
     if res_name:
         # output details of each simulation: Cost and QALY
         #dimension: simulation# -> row index,hospital-> columns
         data_io.write_detailed_markov_outcomes(markov_results,res_name,point)
+        data_io.write_out_p_good(markov_results,res_name,point)
+        data_io.write_out_times(ais_times,res_name,point)
+
     results = collections.OrderedDict()
     results['Location'] = point
     results['Patient'] = first_pat_num + pat_num
@@ -267,9 +270,9 @@ def run_one_scenario(patient, point, these_times, hospital_list,
     cbc = these_results.counts_by_center
     cbc = {str(center): count for center, count in cbc.items()}
     results.update(cbc)
-    # add zero counts for hospital that are never optimal
+    # add nan for hospital that are never optimal
     zero_c = {
-        str(hospital): 0
+        str(hospital): float('nan')
         for hospital in hospital_list if str(hospital) not in results.keys()
     }
     results.update(zero_c)

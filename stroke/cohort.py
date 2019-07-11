@@ -25,6 +25,7 @@ class Population:
         self.severity = patient.severity
         self.strategies = ais_outcomes.strategies
         self.horizon = horizon
+        self.ais_outcomes=ais_outcomes
         self._break_into_states(ais_outcomes)
 
     def analyze(self):

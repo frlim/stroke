@@ -63,7 +63,7 @@ class StrokeModel:
         outcomes = ais_model.run_all_strategies()
         markov = cohort.Population(self._patient, outcomes)
         markov.analyze()
-        return results.Results(markov),markov
+        return results.Results(markov),markov,ais_times
 
     def _check_convergence(self,markov_results,n_sim,old_df_cbc=None):
         CONVERGENCE_THRESH = .01 # out of 1 (1%)
@@ -101,4 +101,4 @@ class StrokeModel:
                 break
             else:
                 print(f'repeating for nsim of {n_sim}')
-        return markov_results,markov
+        return markov_results,markov,ais_times
