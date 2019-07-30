@@ -241,21 +241,21 @@ def run_one_scenario(patient, point, these_times, hospital_list,
     model = sm.StrokeModel(patient, hospital_list)
     model.set_times(these_times)
     if str(simulation_count)=='auto':
-        run_model = model.run_new
+        model_run = model.run_new
     else:
         try:
             simulation_count = int(simulation_count)
-            run_model = model.run
+            model_run = model.run
         except ValueError:
             raise Exception("Num of simulation is not an integer!")
-    these_results,markov_results,ais_times = run_model(
+    these_results,markov_results,ais_times = model_run(
         n=simulation_count, fix_performance=fix_performance)
     if res_name:
         # output details of each simulation: Cost and QALY
         #dimension: simulation# -> row index,hospital-> columns
-        data_io.write_detailed_markov_outcomes(markov_results,res_name,point)
-        data_io.write_out_p_good(markov_results,res_name,point)
-        data_io.write_out_times(ais_times,res_name,point)
+        data_io.write_detailed_markov_outcomes(markov_results,res_name,point,times=ais_times)
+        # data_io.write_out_p_good(markov_results,res_name,point)
+        # data_io.write_out_times(ais_times,res_name,point)
 
     results = collections.OrderedDict()
     results['Location'] = point

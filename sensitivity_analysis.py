@@ -8,12 +8,12 @@ from types import SimpleNamespace
 
 SEX_MALE = constants.Sex.MALE
 SEX_FEMALE = constants.Sex.FEMALE
-AGE_MIN = 65
-AGE_MAX = 85
+AGE_MIN = 75
+AGE_MAX = 75
 RACE_MIN = 0
 RACE_MAX = 9
-SYMP_MIN = 10
-SYMP_MAX = 100
+SYMP_MIN = 40
+SYMP_MAX = 40
 
 if __name__ == '__main__':
     # get file paths base on OS
@@ -21,7 +21,7 @@ if __name__ == '__main__':
     hospital_path = paths.HOSPITAL_PATH
     times_path = paths.TIMES_PATH
     #s_default - 'auto' for automatic mode or else enter an integer
-    s_default = 1000 #'auto'
+    s_default = 2000 #'auto'
     upper = 1
 
     # Input in boolean and model parameters, the rest will be taken care of by code logic
@@ -77,20 +77,20 @@ if __name__ == '__main__':
                         res_name=res_name)
                     main.main_default_dtn(args)
 
-                    # res_name=str(res_name_prefix/
-                    # f'times={times_path.stem}_hospitals={hospital_path.stem}_sex={sex_str}_age={age}_race={race}_symptom={time_since_symptoms}_nsim={s_default}_afAHA.csv')
-                    # args = Namespace(
-                    #     patients=1,
-                    #     simulations=s_default,
-                    #     multicore=True,
-                    #     hospital_file=str(hospital_path),
-                    #     times_file=str(times_path),
-                    #     sex=sex,
-                    #     age=age,
-                    #     race=race,
-                    #     time_since_symptoms=time_since_symptoms,
-                    #     res_name=res_name)
-                    # main.main(args)
+                    res_name=str(res_name_prefix/
+                    f'times={times_path.stem}_hospitals={hospital_path.stem}_sex={sex_str}_age={age}_race={race}_symptom={time_since_symptoms}_nsim={s_default}_afAHA.csv')
+                    args = Namespace(
+                        patients=1,
+                        simulations=s_default,
+                        multicore=True,
+                        hospital_file=str(hospital_path),
+                        times_file=str(times_path),
+                        sex=sex,
+                        age=age,
+                        race=race,
+                        time_since_symptoms=time_since_symptoms,
+                        res_name=res_name)
+                    main.main(args)
 
                     # if in resume modecheck off that resuming is done once loop finished
                     if resume_parameters.symp_resume & (time_since_symptoms==resume_parameters.symp):

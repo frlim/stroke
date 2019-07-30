@@ -7,10 +7,11 @@ import warnings
 import stroke.stroke_center as sc
 import pandas as pd
 import gc
-if os.name =='nt': import xlwings as xw
+if os.name == 'nt': import xlwings as xw
 from pathlib import Path
 import paths
 from stroke import constants
+
 
 def get_hospitals(hospital_file, use_default_times=False):
     '''Generate a list of StrokeCenters from a csv
@@ -26,8 +27,9 @@ def get_hospitals(hospital_file, use_default_times=False):
 
         for row in reader:
             try:
-                center_id = int(row['HOSP_KEY'])
+                center_id = row['HOSP_KEY']
             except:
+                # for Demo.csv
                 center_id = int(row['CenterID'])
             center_type = row['CenterType']
             name = str(center_id)
@@ -38,34 +40,46 @@ def get_hospitals(hospital_file, use_default_times=False):
                 dtp_dist = None
             else:
                 dtn_dist = sc.HospitalTimeDistribution(
-                    float(row['DTN_1st']),
-                    float(row['DTN_Median']),
-                    float(row['DTN_3rd'])
-                )
+                    float(row['DTN_1st']), float(row['DTN_Median']),
+                    float(row['DTN_3rd']))
                 if center_type == 'Comprehensive':
                     dtp_dist = sc.HospitalTimeDistribution(
-                        float(row['DTP_1st']),
-                        float(row['DTP_Median']),
-                        float(row['DTP_3rd'])
-                    )
+                        float(row['DTP_1st']), float(row['DTP_Median']),
+                        float(row['DTP_3rd']))
                 else:
                     dtp_dist = None
 
             if center_type == 'Comprehensive':
-                comp = sc.StrokeCenter(long_name, name,
-                                       sc.CenterType.COMPREHENSIVE,
-                                       center_id, dtn_dist=dtn_dist,
-                                       dtp_dist=dtp_dist)
+                comp = sc.StrokeCenter(
+                    long_name,
+                    name,
+                    sc.CenterType.COMPREHENSIVE,
+                    center_id,
+                    dtn_dist=dtn_dist,
+                    dtp_dist=dtp_dist)
                 comprehensives[center_id] = comp
             elif center_type == 'Primary':
                 try:
-                    transfer_id = int(float(row['destinationID']))
+                    transfer_id = row['destination_KEY']
                     transfer_time = float(row['transfer_time'])
                     destinations[center_id] = (transfer_id, transfer_time)
                 except ValueError:
                     warnings.warn(f'No transfer destination for {long_name}')
-                prim = sc.StrokeCenter(long_name, name, sc.CenterType.PRIMARY,
-                                       center_id, dtn_dist=dtn_dist)
+                except:
+                    # old structure
+                    try:
+                        transfer_id = int(float(row['destinationID']))
+                        transfer_time = float(row['transfer_time'])
+                        destinations[center_id] = (transfer_id, transfer_time)
+                    except ValueError:
+                        warnings.warn(
+                            f'No transfer destination for {long_name}')
+                prim = sc.StrokeCenter(
+                    long_name,
+                    name,
+                    sc.CenterType.PRIMARY,
+                    center_id,
+                    dtn_dist=dtn_dist)
                 primaries[center_id] = prim
 
     for primary_id, (transfer_id, transfer_time) in destinations.items():
@@ -74,7 +88,6 @@ def get_hospitals(hospital_file, use_default_times=False):
         prim.add_transfer_destination(transfer_destination, transfer_time)
 
     return list(primaries.values()) + list(comprehensives.values())
-
 
 
 def get_hospitals_real_data(hospital_file, dtn_file, cell_range='A1:M275'):
@@ -88,23 +101,22 @@ def get_hospitals_real_data(hospital_file, dtn_file, cell_range='A1:M275'):
     '''
     # load spreadsheet
     dtn = paths.load_dtn(dtn_file)
-    hospitals = pd.read_csv(hospital_file)
-    hospitals_dtn = hospitals.merge(dtn, on='HOSP_KEY', how='left')
+    hospitals = paths.load_hospital(hospital_file=hospital_file)
+    hospitals_dtn = hospitals.join(dtn, how='left', rsuffix='_dtn')
     primaries = {}
     destinations = {}
     comprehensives = {}
-    dtn_cols = ['IVTPA_P25','IVTPA_MEDIAN','IVTPA_P75']
-    dtp_cols = ['ARTPUNC_P25','ARTPUNC_MEDIAN','ARTPUNC_P75']
-    for idx, row in hospitals_dtn.iterrows():
-        center_id = int(row['HOSP_KEY'])
+    dtn_cols = ['IVTPA_P25', 'IVTPA_MEDIAN', 'IVTPA_P75']
+    dtp_cols = ['IATPA_P25', 'IATPA_MEDIAN', 'IATPA_P75']
+    for center_id, row in hospitals_dtn.iterrows():
         center_type = row['CenterType']
         name = str(center_id)
         long_name = f'Center {center_id}'
         dtn_availability = row[dtn_cols].notna().all()
         if dtn_availability:
             dtn_dist = sc.HospitalTimeDistribution(
-                float(row['IVTPA_P25']), float(row['IVTPA_MEDIAN']),
-                float(row['IVTPA_P75']))
+                float(row[dtn_cols[0]]), float(row[dtn_cols[1]]),
+                float(row[dtn_cols[2]]))
         else:
             if center_type == 'Primary':
                 dtn_dist = sc.PRIMARY_DIST
@@ -114,8 +126,8 @@ def get_hospitals_real_data(hospital_file, dtn_file, cell_range='A1:M275'):
             dtp_availability = row[dtp_cols].notna().all()
             if dtp_availability:
                 dtp_dist = sc.HospitalTimeDistribution(
-                    float(row['ARTPUNC_P25']), float(row['ARTPUNC_MEDIAN']),
-                    float(row['ARTPUNC_P75']))
+                    float(row[dtp_cols[0]]), float(row[dtp_cols[1]]),
+                    float(row[dtp_cols[2]]))
             else:
                 dtp_dist = sc.DTP_DIST
         else:
@@ -132,11 +144,19 @@ def get_hospitals_real_data(hospital_file, dtn_file, cell_range='A1:M275'):
             comprehensives[center_id] = comp
         elif center_type == 'Primary':
             try:
-                transfer_id = int(float(row['destinationID']))
+                transfer_id = row['destination_KEY']
                 transfer_time = float(row['transfer_time'])
                 destinations[center_id] = (transfer_id, transfer_time)
             except ValueError:
                 warnings.warn(f'No transfer destination for {long_name}')
+            except:
+                # old structure
+                try:
+                    transfer_id = int(float(row['destinationID']))
+                    transfer_time = float(row['transfer_time'])
+                    destinations[center_id] = (transfer_id, transfer_time)
+                except ValueError:
+                    warnings.warn(f'No transfer destination for {long_name}')
             prim = sc.StrokeCenter(
                 long_name,
                 name,
@@ -160,7 +180,7 @@ def get_times_real_data(times_file):
         as keys and travel times as values. The input file is assumed to be
         formatted like `data/travel_times/Demo.csv`.
     '''
-    return pd.read_csv(times_file).set_index('ID').to_dict('index')
+    return pd.read_csv(times_file).set_index('LOC_ID').to_dict('index')
 
 
 def get_times(times_file):
@@ -200,54 +220,121 @@ def get_header(hospitals):
     Get a list of column names for an output file with the given hospitals
     '''
     fieldnames = [
-        'Location', 'Patient', 'Varying Hospitals', 'PSC Count',
-        'CSC Count', 'Sex', 'Age', 'Symptoms', 'RACE'
+        'Location', 'Patient', 'Varying Hospitals', 'PSC Count', 'CSC Count',
+        'Sex', 'Age', 'Symptoms', 'RACE'
     ]
     fieldnames += [str(hospital) for hospital in hospitals]
     return fieldnames
 
-def write_detailed_markov_outcomes(markov,fileprefix,point):
-    filedir = Path(fileprefix)
-    fileparent_dir = filedir.parent
-    filename_prefix = filedir.stem+f'_loc={point}'
-    qalys_df = pd.DataFrame(markov.qalys)
-    costs_df = pd.DataFrame(markov.costs)
-    lys_df = pd.DataFrame(markov.lys)
-    strategies = [str(strategy) for strategy in markov.strategies]
-    qalys_df.index.name='Simulation'
-    costs_df.index.name='Simulation'
-    lys_df.index.name='Simulation'
-    qalys_df.columns=strategies
-    costs_df.columns=strategies
-    lys_df.columns=strategies
-    qalys_df.to_csv(fileparent_dir/(filename_prefix+'_qalys.csv'))
-    costs_df.to_csv(fileparent_dir/(filename_prefix+'_costs.csv'))
-    lys_df.to_csv(fileparent_dir/(filename_prefix+'_lys.csv'))
 
-def write_out_p_good(markov,fileprefix,point):
+def write_detailed_markov_outcomes(markov, fileprefix, point, times=None):
     filedir = Path(fileprefix)
     fileparent_dir = filedir.parent
-    filename = fileparent_dir/(filedir.stem+f'_loc={point}_p_good.csv')
+    filename_prefix = filedir.stem + f'_loc={point}'
+    # rearrange loc and AHAversion tag in filename (bad way)
+    param_list = filename_prefix.split('_')
+    tmp_version = param_list[-2]
+    param_list[-2] = param_list[-1]
+    param_list[-1] = tmp_version
+    filename_prefix = '_'.join(param_list)
+    strategies = [str(strategy) for strategy in markov.strategies]
+    qalys_df = pd.DataFrame(markov.qalys, columns=strategies)
+    costs_df = pd.DataFrame(markov.costs, columns=strategies)
+    lys_df = pd.DataFrame(markov.lys, columns=strategies)
+    qalys_df['Variable'] = 'QALY'
+    costs_df['Variable'] = 'Cost'
+    lys_df['Variable'] = 'LY'
+    pgood_df = pd.DataFrame(markov.ais_outcomes.p_good, columns=strategies)
+    pgood_df['Variable'] = 'pgood'
+    df = pd.concat([lys_df, qalys_df, costs_df, pgood_df], axis=0)
+    df.index.name = 'Simulation'
+    if times is not None:
+        times_df = get_times_df(times)
+        df = df.append(times_df)
+    out_cols = ['Variable'] + strategies
+    df[out_cols].to_csv(
+        fileparent_dir / (filename_prefix + '_detailed_outcome.csv'))
+    # qalys_df.to_csv(fileparent_dir/(filename_prefix+'_qalys.csv'))
+    # costs_df.to_csv(fileparent_dir/(filename_prefix+'_costs.csv'))
+    # lys_df.to_csv(fileparent_dir/(filename_prefix+'_lys.csv'))
+
+
+def write_out_p_good(markov, fileprefix, point):
+    filedir = Path(fileprefix)
+    fileparent_dir = filedir.parent
+    # rearrange loc and AHAversion tag in filename (bad way)
+    filename_prefix = filedir.stem + f'_loc={point}'
+    param_list = filename_prefix.split('_')
+    tmp_version = param_list[-2]
+    param_list[-2] = param_list[-1]
+    param_list[-1] = tmp_version
+    filename_prefix = '_'.join(param_list)
+    filename = fileparent_dir / (filename_prefix + f'_pgood.csv')
     p_good = markov.ais_outcomes.p_good
     strategies = markov.ais_outcomes.strategies
-    df = pd.DataFrame(p_good,columns=strategies)
-    df.index.name='Simulation'
+    df = pd.DataFrame(p_good, columns=strategies)
+    df.index.name = 'Simulation'
     df.to_csv(filename)
 
-def write_out_times(times,fileprefix,point):
+
+def write_out_times(times, fileprefix, point):
     filedir = Path(fileprefix)
     fileparent_dir = filedir.parent
-    filename = fileparent_dir/(filedir.stem+f'_loc={point}_times.csv')
+    # rearrange loc and AHAversion tag in filename (bad way)
+    filename_prefix = filedir.stem + f'_loc={point}'
+    param_list = filename_prefix.split('_')
+    tmp_version = param_list[-2]
+    param_list[-2] = param_list[-1]
+    param_list[-1] = tmp_version
+    filename_prefix = '_'.join(param_list)
+    filename = fileparent_dir / (filename_prefix + f'_times.csv')
     primaries_times = times.onset_needle_primary
-    p1 = pd.DataFrame(primaries_times,columns=times.get_strategies(constants.StrategyKind.PRIMARY))
+    p1 = pd.DataFrame(
+        primaries_times,
+        columns=times.get_strategies(constants.StrategyKind.PRIMARY))
     comprehensives_times = times.onset_needle_comprehensive
-    c1 = pd.DataFrame(comprehensives_times,columns=times.get_strategies(constants.StrategyKind.COMPREHENSIVE))
+    c1 = pd.DataFrame(
+        comprehensives_times,
+        columns=times.get_strategies(constants.StrategyKind.COMPREHENSIVE))
     onset_evt_ship = times.onset_evt_ship
-    p2 = pd.DataFrame(onset_evt_ship,columns=times.get_strategies(constants.StrategyKind.DRIP_AND_SHIP))
+    p2 = pd.DataFrame(
+        onset_evt_ship,
+        columns=times.get_strategies(constants.StrategyKind.DRIP_AND_SHIP))
     # onset_evt_noship = times.onset_evt_noship
-    df = pd.concat([p1,p2,c1],axis=1)
-    df.index.name='Simulation'
+    df = pd.concat([p1, p2, c1], axis=1)
+    df.index.name = 'Simulation'
     df.to_csv(filename)
+
+
+def get_times_df(times):
+    primaries_times = times.onset_needle_primary
+
+    p1 = pd.DataFrame(
+        primaries_times,
+        columns=[
+            str(s)
+            for s in times.get_strategies(constants.StrategyKind.PRIMARY)
+        ])
+    comprehensives_times = times.onset_needle_comprehensive
+    c1 = pd.DataFrame(
+        comprehensives_times,
+        columns=[
+            str(s)
+            for s in times.get_strategies(constants.StrategyKind.COMPREHENSIVE)
+        ])
+    onset_evt_ship = times.onset_evt_ship
+    p2 = pd.DataFrame(
+        onset_evt_ship,
+        columns=[
+            str(s)
+            for s in times.get_strategies(constants.StrategyKind.DRIP_AND_SHIP)
+        ])
+    # onset_evt_noship = times.onset_evt_noship
+    df = pd.concat([p1, p2, c1], axis=1)
+    df.index.name = 'Simulation'
+    df['Variable'] = 'onset_to_treatment_time'
+    return df
+
 
 def save_patient(outfile, patient_results, hospitals):
     '''

@@ -65,6 +65,11 @@ class Results:
 
         # Record counts of optimal strategies considering cost
         optimal_counts = Counter()
+        for j, strategy in enumerate(cohort.strategies):
+            # listed in all possible strategies as 0 first
+            # to help differentiate from centers that are not
+            # a feasible option (too far away to even consider) in final results
+            optimal_counts[strategy] = 0
         for i in range(cohort.qalys.shape[0]):
             data = []
             for j, strategy in enumerate(cohort.strategies):
