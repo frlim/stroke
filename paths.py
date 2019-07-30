@@ -12,7 +12,7 @@ else: # FOR TED
     DTN_FILE = _data_path/'deidentified_DTN_master.xlsx'
     RES_NAME_PREFIX  = Path('/sda1/stroke_model_output/output_073019')
     HOSPITAL_PATH = Path('data/hospitals/MA_n=1000.csv')
-    TIMES_PATH = Path('data/hospitals/MA_n=1000.csv')
+    TIMES_PATH = Path('data/travel_times/MA_n=1000.csv')
 
 
 def load_dtn(dtn_file=DTN_FILE):
