@@ -11,86 +11,9 @@ if os.name == 'nt': import xlwings as xw
 from pathlib import Path
 import paths
 from stroke import constants
+import numpy as np
 
-
-def get_hospitals(hospital_file, use_default_times=False):
-    '''Generate a list of StrokeCenters from a csv
-        file containing transfer destinations and times. Optionally use
-        recorded hospital performance metrics. The CSV is assumed to be
-        formatted like `data/hospitals/Demo.csv`
-    '''
-    primaries = {}
-    destinations = {}
-    comprehensives = {}
-    with open(hospital_file, 'r') as f:
-        reader = csv.DictReader(f)
-
-        for row in reader:
-            try:
-                center_id = row['HOSP_KEY']
-            except:
-                # for Demo.csv
-                center_id = int(row['CenterID'])
-            center_type = row['CenterType']
-            name = str(center_id)
-            long_name = f'Center {center_id}'
-
-            if use_default_times:
-                dtn_dist = None
-                dtp_dist = None
-            else:
-                dtn_dist = sc.HospitalTimeDistribution(
-                    float(row['DTN_1st']), float(row['DTN_Median']),
-                    float(row['DTN_3rd']))
-                if center_type == 'Comprehensive':
-                    dtp_dist = sc.HospitalTimeDistribution(
-                        float(row['DTP_1st']), float(row['DTP_Median']),
-                        float(row['DTP_3rd']))
-                else:
-                    dtp_dist = None
-
-            if center_type == 'Comprehensive':
-                comp = sc.StrokeCenter(
-                    long_name,
-                    name,
-                    sc.CenterType.COMPREHENSIVE,
-                    center_id,
-                    dtn_dist=dtn_dist,
-                    dtp_dist=dtp_dist)
-                comprehensives[center_id] = comp
-            elif center_type == 'Primary':
-                try:
-                    transfer_id = row['destination_KEY']
-                    transfer_time = float(row['transfer_time'])
-                    destinations[center_id] = (transfer_id, transfer_time)
-                except ValueError:
-                    warnings.warn(f'No transfer destination for {long_name}')
-                except:
-                    # old structure
-                    try:
-                        transfer_id = int(float(row['destinationID']))
-                        transfer_time = float(row['transfer_time'])
-                        destinations[center_id] = (transfer_id, transfer_time)
-                    except ValueError:
-                        warnings.warn(
-                            f'No transfer destination for {long_name}')
-                prim = sc.StrokeCenter(
-                    long_name,
-                    name,
-                    sc.CenterType.PRIMARY,
-                    center_id,
-                    dtn_dist=dtn_dist)
-                primaries[center_id] = prim
-
-    for primary_id, (transfer_id, transfer_time) in destinations.items():
-        prim = primaries[primary_id]
-        transfer_destination = comprehensives[transfer_id]
-        prim.add_transfer_destination(transfer_destination, transfer_time)
-
-    return list(primaries.values()) + list(comprehensives.values())
-
-
-def get_hospitals_real_data(hospital_file, dtn_file, cell_range='A1:M275'):
+def get_hospitals(hospital_file, dtn_file=None):
     '''Generate a list of StrokeCenters from a csv
         file containing transfer destinations and times. Optionally use
         recorded hospital performance metrics. The CSV is assumed to be
@@ -99,35 +22,40 @@ def get_hospitals_real_data(hospital_file, dtn_file, cell_range='A1:M275'):
         if a hospital doesn't have DTN or DTP time, use default distributions
         in stroke_center.py
     '''
-    # load spreadsheet
-    dtn = paths.load_dtn(dtn_file)
+    # load spreadsheets
     hospitals = paths.load_hospital(hospital_file=hospital_file)
-    hospitals_dtn = hospitals.join(dtn, how='left', rsuffix='_dtn')
+    if dtn_file:
+        dtn = paths.load_dtn(dtn_file)
+        hospitals_dtn = hospitals.join(dtn, how='left', rsuffix='_dtn')
+    else:
+        # use default dtn, assign NaN to treatment time columns
+        hospitals_dtn = hospitals.assign(**dict(
+            zip(paths.DTN_COLS, [np.nan] * len(paths.DTN_COLS)))).assign(
+                **dict(zip(paths.DTP_COLS, [np.nan] * len(paths.DTP_COLS))))
+
     primaries = {}
     destinations = {}
     comprehensives = {}
-    dtn_cols = ['IVTPA_P25', 'IVTPA_MEDIAN', 'IVTPA_P75']
-    dtp_cols = ['IATPA_P25', 'IATPA_MEDIAN', 'IATPA_P75']
     for center_id, row in hospitals_dtn.iterrows():
         center_type = row['CenterType']
         name = str(center_id)
         long_name = f'Center {center_id}'
-        dtn_availability = row[dtn_cols].notna().all()
+        dtn_availability = row[paths.DTN_COLS].notna().all()
         if dtn_availability:
             dtn_dist = sc.HospitalTimeDistribution(
-                float(row[dtn_cols[0]]), float(row[dtn_cols[1]]),
-                float(row[dtn_cols[2]]))
+                float(row[paths.DTN_COLS[0]]), float(row[paths.DTN_COLS[1]]),
+                float(row[paths.DTN_COLS[2]]))
         else:
             if center_type == 'Primary':
                 dtn_dist = sc.PRIMARY_DIST
             else:
                 dtn_dist = sc.COMP_DIST
         if center_type == 'Comprehensive':
-            dtp_availability = row[dtp_cols].notna().all()
+            dtp_availability = row[paths.DTP_COLS].notna().all()
             if dtp_availability:
                 dtp_dist = sc.HospitalTimeDistribution(
-                    float(row[dtp_cols[0]]), float(row[dtp_cols[1]]),
-                    float(row[dtp_cols[2]]))
+                    float(row[paths.DTP_COLS[0]]), float(
+                        row[paths.DTP_COLS[1]]), float(row[paths.DTP_COLS[2]]))
             else:
                 dtp_dist = sc.DTP_DIST
         else:
@@ -173,16 +101,6 @@ def get_hospitals_real_data(hospital_file, dtn_file, cell_range='A1:M275'):
     return list(primaries.values()) + list(comprehensives.values())
 
 
-def get_times_real_data(times_file):
-    '''
-    Generate a dictionary of dictionaries representing each point in the given
-        file. Outer keys are location IDs, inner dictionaries have hospital IDs
-        as keys and travel times as values. The input file is assumed to be
-        formatted like `data/travel_times/Demo.csv`.
-    '''
-    return pd.read_csv(times_file).set_index('LOC_ID').to_dict('index')
-
-
 def get_times(times_file):
     '''
     Generate a dictionary of dictionaries representing each point in the given
@@ -190,9 +108,7 @@ def get_times(times_file):
         as keys and travel times as values. The input file is assumed to be
         formatted like `data/travel_times/Demo.csv`.
     '''
-    with open(times_file, 'r') as f:
-        reader = csv.DictReader(f)
-        return {int(row['ID']): row for row in reader}
+    return pd.read_csv(times_file).set_index('LOC_ID').to_dict('index')
 
 
 def get_next_patient_number(results_file):

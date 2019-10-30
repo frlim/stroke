@@ -15,8 +15,11 @@ except NameError:
     from tqdm import tqdm
 import paths
 
-NON_COUNT_COLS = ['Location','Patient','Varying Hospitals','PSC Count','CSC Count',
-    'Sex','Age','Symptoms','RACE']
+NON_COUNT_COLS = [
+    'Location', 'Patient', 'Varying Hospitals', 'PSC Count', 'CSC Count',
+    'Sex', 'Age', 'Symptoms', 'RACE'
+]
+
 
 def results_name(base_dir, times_file, hospitals_file, fix_performance,
                  simulation_count, sex):
@@ -26,7 +29,7 @@ def results_name(base_dir, times_file, hospitals_file, fix_performance,
     out_name = f'times={times_file.strip(".csv")}'
     out_name += f'_hospitals={hospitals_file.strip(".csv")}'
     out_name += '_fixed' if fix_performance else '_random'
-    out_name += '_'+str(sex)
+    out_name += '_' + str(sex)
     out_name += '.csv'
     out_dir = os.path.join(base_dir, 'output')
     if not os.path.isdir(out_dir):
@@ -34,72 +37,6 @@ def results_name(base_dir, times_file, hospitals_file, fix_performance,
     out_file = os.path.join(out_dir, out_name)
     return out_file
 
-
-def run_model(
-        times_file,
-        hospitals_file,
-        fix_performance=False,
-        patient_count=10,
-        simulation_count=1000,
-        cores=None,
-        base_dir='',  # default: current working directory
-        locations=None,  # default: run for all location in times_file
-        res_name=None,
-        **kwargs):
-    '''Run the model on the given map points for the given hospitals. The
-        times file should be in data/travel_times and contain travel times to
-        appropriate hospitals. The hospitals file should be in data/hospitals
-        and contain transfer destinations and times for all primary hospitals.
-
-        kwargs -- passed through to inputs.Inputs.random to hold parameters
-                    constant
-    '''
-    hospitals = data_io.get_hospitals(hospitals_file, use_default_times=False)
-    hospitals_default = data_io.get_hospitals(hospitals_file, use_default_times=True)
-    hospital_lists = [(True, hospitals), (False, hospitals_default)]
-
-    patients = [Patient.random(**kwargs) for _ in range(patient_count)]
-    sex = patients[0].sex
-
-    times = data_io.get_times(times_file)
-    if locations:  # Not none
-        times = {loc: time for loc, time in times.items() if loc in locations}
-
-    if not res_name:
-        res_name = results_name(base_dir, times_file, hospitals_file,
-                            fix_performance, simulation_count, sex)
-    first_pat_num = data_io.get_next_patient_number(res_name)
-
-    if cores is False:
-        pool = False
-    else:
-        pool = mp.Pool(cores)
-
-    for pat_num, patient in enumerate(tqdm(patients, desc='Patients')):
-        patient_results = []
-        for point, these_times in tqdm(
-                times.items(), desc='Map Points', leave=False):
-            for uses_hospital_performance, hospital_list in hospital_lists:
-                if pool:
-                    results = pool.apply_async(
-                        run_one_scenario,
-                        (patient, point, these_times, hospital_list,
-                         uses_hospital_performance, simulation_count,
-                         fix_performance, first_pat_num, pat_num,res_name))
-                else:
-                    results = run_one_scenario(
-                        patient, point, these_times, hospital_list,
-                        uses_hospital_performance, simulation_count,
-                        fix_performance, first_pat_num, pat_num,res_name)
-                patient_results.append(results)
-        if pool:
-            to_fetch = tqdm(patient_results, desc='Map Points', leave=False)
-            patient_results = [job.get() for job in to_fetch]
-        # Save after each patient in case we cancel or crash
-        data_io.save_patient(res_name, patient_results, hospitals)
-    if pool:
-        pool.close()
-    return
 
 def run_model_defaul_dtn(
         times_file,
@@ -121,21 +58,23 @@ def run_model_defaul_dtn(
         This method use travel_time file generated from hospital list Kori gave
         but instead of using DTN times from AHA, we use default_times generated
         from a uniform distribution
-        for now, use fix_performance = True to make it fair for the hospitals
+        For now, use fix_performance = True to make it fair for the hospitals
     '''
-    hospitals = data_io.get_hospitals(hospitals_file,use_default_times=True)
-    hospital_lists = [(False, hospitals)] # false means use same DTN distribution for all hospitals
+    hospitals = data_io.get_hospitals(hospitals_file)
+    hospital_lists = [
+        (False, hospitals)
+    ]  # false means use same DTN distribution for all hospitals
 
     patients = [Patient.random(**kwargs) for _ in range(patient_count)]
     sex = patients[0].sex
 
-    times = data_io.get_times_real_data(times_file)
+    times = data_io.get_times(times_file)
     if locations:  # Not none
         times = {loc: time for loc, time in times.items() if loc in locations}
 
     if not res_name:
         res_name = results_name(base_dir, times_file, hospitals_file,
-                            fix_performance, simulation_count, sex)
+                                fix_performance, simulation_count, sex)
     first_pat_num = data_io.get_next_patient_number(res_name)
 
     if cores is False:
@@ -152,12 +91,12 @@ def run_model_defaul_dtn(
                         run_one_scenario,
                         (patient, point, these_times, hospital_list,
                          uses_hospital_performance, simulation_count,
-                         fix_performance, first_pat_num, pat_num,res_name))
+                         fix_performance, first_pat_num, pat_num, res_name))
                 else:
                     results = run_one_scenario(
                         patient, point, these_times, hospital_list,
                         uses_hospital_performance, simulation_count,
-                        fix_performance, first_pat_num, pat_num,res_name)
+                        fix_performance, first_pat_num, pat_num, res_name)
                 patient_results.append(results)
         if pool:
             to_fetch = tqdm(patient_results, desc='Map Points', leave=False)
@@ -188,19 +127,19 @@ def run_model_real_data(
         kwargs -- passed through to inputs.Inputs.random to hold parameters
                     constant
     '''
-    hospitals = data_io.get_hospitals_real_data(hospitals_file,dtn_file)
+    hospitals = data_io.get_hospitals(hospitals_file, dtn_file)
     hospital_lists = [(True, hospitals)]
 
     patients = [Patient.random(**kwargs) for _ in range(patient_count)]
     sex = patients[0].sex
 
-    times = data_io.get_times_real_data(times_file)
+    times = data_io.get_times(times_file)
     if locations:  # Not none
         times = {loc: time for loc, time in times.items() if loc in locations}
 
     if not res_name:
         res_name = results_name(base_dir, times_file, hospitals_file,
-                            fix_performance, simulation_count, sex)
+                                fix_performance, simulation_count, sex)
 
     first_pat_num = data_io.get_next_patient_number(res_name)
 
@@ -218,12 +157,12 @@ def run_model_real_data(
                         run_one_scenario,
                         (patient, point, these_times, hospital_list,
                          uses_hospital_performance, simulation_count,
-                         fix_performance, first_pat_num, pat_num,res_name))
+                         fix_performance, first_pat_num, pat_num, res_name))
                 else:
                     results = run_one_scenario(
                         patient, point, these_times, hospital_list,
                         uses_hospital_performance, simulation_count,
-                        fix_performance, first_pat_num, pat_num,res_name)
+                        fix_performance, first_pat_num, pat_num, res_name)
                 patient_results.append(results)
         if pool:
             to_fetch = tqdm(patient_results, desc='Map Points', leave=False)
@@ -235,12 +174,19 @@ def run_model_real_data(
     return
 
 
-def run_one_scenario(patient, point, these_times, hospital_list,
-                     uses_hospital_performance, simulation_count,
-                     fix_performance, first_pat_num, pat_num,res_name=None):
+def run_one_scenario(patient,
+                     point,
+                     these_times,
+                     hospital_list,
+                     uses_hospital_performance,
+                     simulation_count,
+                     fix_performance,
+                     first_pat_num,
+                     pat_num,
+                     res_name=None):
     model = sm.StrokeModel(patient, hospital_list)
     model.set_times(these_times)
-    if str(simulation_count)=='auto':
+    if str(simulation_count) == 'auto':
         model_run = model.run_new
     else:
         try:
@@ -248,12 +194,13 @@ def run_one_scenario(patient, point, these_times, hospital_list,
             model_run = model.run
         except ValueError:
             raise Exception("Num of simulation is not an integer!")
-    these_results,markov_results,ais_times = model_run(
+    these_results, markov_results, ais_times = model_run(
         n=simulation_count, fix_performance=fix_performance)
     if res_name:
         # output details of each simulation: Cost and QALY
         #dimension: simulation# -> row index,hospital-> columns
-        data_io.write_detailed_markov_outcomes(markov_results,res_name,point,times=ais_times)
+        data_io.write_detailed_markov_outcomes(
+            markov_results, res_name, point, times=ais_times)
         # data_io.write_out_p_good(markov_results,res_name,point)
         # data_io.write_out_times(ais_times,res_name,point)
 
@@ -281,15 +228,16 @@ def run_one_scenario(patient, point, these_times, hospital_list,
 
 def parse_extra_inputs(args):
     kwargs = {}
-    if hasattr(args,'sex'):
+    if hasattr(args, 'sex'):
         kwargs['sex'] = args.sex
-    if hasattr(args,'age'):
+    if hasattr(args, 'age'):
         kwargs['age'] = args.age
-    if hasattr(args,'race'):
-        kwargs['race'] =args.race
-    if hasattr(args,'time_since_symptoms'):
+    if hasattr(args, 'race'):
+        kwargs['race'] = args.race
+    if hasattr(args, 'time_since_symptoms'):
         kwargs['time_since_symptoms'] = args.time_since_symptoms
     return kwargs
+
 
 def main(args):
     times_file = args.times_file
@@ -302,7 +250,7 @@ def main(args):
     #     base_dir = args.base_dir  # dir to put output file in
     # else:
     #     base_dir = ''  # default: current working directory
-    base_dir=''
+    base_dir = ''
 
     if hasattr(args, 'locations'):
         locations = args.locations
@@ -311,7 +259,7 @@ def main(args):
     if hasattr(args, 'res_name'):
         res_name = args.res_name
     else:
-        res_name=None
+        res_name = None
 
     if args.multicore:
         cores = None
@@ -327,8 +275,9 @@ def main(args):
         cores=cores,
         base_dir=base_dir,
         locations=locations,
-        res_name =res_name,
+        res_name=res_name,
         **kwargs)
+
 
 def main_default_dtn(args):
     times_file = args.times_file
@@ -341,7 +290,7 @@ def main_default_dtn(args):
     #     base_dir = args.base_dir  # dir to put output file in
     # else:
     #     base_dir = ''  # default: current working directory
-    base_dir=''
+    base_dir = ''
 
     if hasattr(args, 'locations'):
         locations = args.locations
@@ -350,7 +299,7 @@ def main_default_dtn(args):
     if hasattr(args, 'res_name'):
         res_name = args.res_name
     else:
-        res_name=None
+        res_name = None
 
     if args.multicore:
         cores = None
@@ -366,8 +315,9 @@ def main_default_dtn(args):
         cores=cores,
         base_dir=base_dir,
         locations=locations,
-        res_name =res_name,
+        res_name=res_name,
         **kwargs)
+
 
 if __name__ == '__main__':
     p_default = 2

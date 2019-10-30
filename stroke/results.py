@@ -79,7 +79,7 @@ class Results:
                     continue
                 data.append(FormattedResult(strategy, qaly, cost, None))
             optimal = get_optimal(data, threshold_ICER)
-            optimal_counts[optimal] += 1
+            if optimal: optimal_counts[optimal] += 1
         self._optimal_counts = optimal_counts
         self._threshold = threshold_ICER
 
@@ -115,6 +115,7 @@ def get_optimal(data, threshold):
     Given a list of FormattedResults representing strategies for a single
         model run, select the optimal result and return it.
     """
+    if len(data) == 0: return None # if empty list returns None
     sort_and_remove_duplicates(data)
 
     # Then, iteratively go through dataframe dropping strategies that are

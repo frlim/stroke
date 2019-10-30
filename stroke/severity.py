@@ -66,8 +66,10 @@ class Severity(abc.ABC):
         new_odds = baseline_prob_to_odds * odds_ratio
         adjusted_prob = new_odds / (1 + new_odds)
 
-        return np.where(time_onset_tpa < constants.time_limit_tpa(),
-                        adjusted_prob, baseline_prob)
+        return np.where(
+            np.isnan(time_onset_tpa), np.nan,
+            np.where(time_onset_tpa < constants.time_limit_tpa(),
+                     adjusted_prob, baseline_prob))
 
     def p_reperfusion_endovascular(self):
         # Saver et al. JAMA 2016, Schlemm analysis
@@ -99,8 +101,7 @@ class Severity(abc.ABC):
         states[:, :, constants.States.MRS_6] = np.where(
             self.NIHSS < 7, 0.042,
             np.where(self.NIHSS < 13, 0.139,
-                     np.where(self.NIHSS < 21, 0.316, 0.535))
-        )
+                     np.where(self.NIHSS < 21, 0.316, 0.535)))
 
         # Good outcomes
         states[:, :, constants.States.MRS_0] = 0.205627706 * p_good_outcome
@@ -142,6 +143,7 @@ class RACE(Severity):
         Get the probability of an LVO under the assumption that the severity
             describes an acute ischemic stroke.
         """
+
         # Perez de la Ossa et al. Stroke 2014 data for p lvo given ais
         def p_lvo_logistic_helper(b0, b1):
             return (1.0 / (1.0 + np.exp(-b0 - b1 * self.score)))
