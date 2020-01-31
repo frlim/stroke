@@ -180,5 +180,5 @@ class NIHSS(RACE):
             race = 0
         else:
             race = (score + 0.39) / 2.39
-        if race > 9: race = 0
+        if race > 9: race = 9
         return race
