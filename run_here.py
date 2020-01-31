@@ -17,6 +17,7 @@ if __name__ == '__main__':
     patient_profiles = pd.read_csv(
         paths._data_path / 'patient_profiles_01_30_20.csv', index_col=0)
     for id, profile in patient_profiles.iterrows():
+        print(f"Patient #{id}")
         age, sex, nihss, time_since_symptoms = profile.age, profile.sex, profile.nihss, profile.time_since_symptoms
         sex_str = 'male' if sex == constants.Sex.MALE else 'female'
         res_name = str(
@@ -25,17 +26,18 @@ if __name__ == '__main__':
             + f'_nihss={nihss}_symptom={time_since_symptoms}_nsim={s_default}_beAHA.csv')
         )
         args = Namespace(
-            patients=1,
-            simulations=s_default,
-            multicore=True,
-            hospital_file=str(hospital_path),
+            patient_count=1,
+            simulation_count=s_default,
+            cores=None, #None: multicore, False: run single core
+            hospitals_file=str(hospital_path),
             times_file=str(times_path),
             sex=sex,
             age=age,
             nihss=nihss,
             time_since_symptoms=time_since_symptoms,
             res_name=res_name)
-        main.main_default_dtn(args)
+        print("Before AHA")
+        main.run_model_defaul_dtn(**vars(args))
 
         res_name = str(
             res_name_prefix /
@@ -43,14 +45,15 @@ if __name__ == '__main__':
             + f'_nihss={nihss}_symptom={time_since_symptoms}_nsim={s_default}_afAHA.csv')
         )
         args = Namespace(
-            patients=1,
-            simulations=s_default,
-            multicore=True,
-            hospital_file=str(hospital_path),
+            patient_count=1,
+            simulation_count=s_default,
+            cores=None, #None: multicore, False: run single core
+            hospitals_file=str(hospital_path),
             times_file=str(times_path),
             sex=sex,
             age=age,
             nihss=nihss,
             time_since_symptoms=time_since_symptoms,
             res_name=res_name)
-        main.main(args)
+        print("After AHA")
+        main.run_model_real_data(**vars(args))
