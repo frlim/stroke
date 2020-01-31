@@ -168,42 +168,17 @@ class RACE(Severity):
             nihss = -0.39 + 2.39 * self.score
         return nihss
 
-
-class NIHSS(Severity):
-    """
-    Severity represented by NIHSS score, with LVO probability computed by
-        converting to RACE.
-    """
-
-    @property
-    def NIHSS(self):
-        return self.score
-
-    @property
-    def score(self):
-        return self._score
-
-    @score.setter
-    def set_score(self, score):
+class NIHSS(RACE):
+    def __init__(self,score):
         if score < 0 or score > 42:
             raise ValueError(f'Invalid NIHSS score {score}')
-        self.score = score
-        self._get_RACE()
+        race =  self._get_RACE_score(score)
+        super(NIHSS,self).__init__(race)
 
-    def __init__(self, score):
-        self.score = score
-
-    def _get_RACE(self):
-        if self.score <= 1:
+    def _get_RACE_score(self,score):
+        if score <= 1:
             race = 0
         else:
-            race = (self.score + 0.39) / 2.39
-        self._RACE = RACE(race)
-
-    def prob_LVO_given_AIS(self, n=1, add_uncertainty=False):
-        """
-        Get the probability of an LVO under the assumption that the severity
-            describes an acute ischemic stroke. Computed by converting to a
-            RACE score first via linear regression.
-        """
-        return self._RACE.prob_LVO_given_AIS(n, add_uncertainty)
+            race = (score + 0.39) / 2.39
+        if race > 9: race = 0
+        return race
