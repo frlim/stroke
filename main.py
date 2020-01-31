@@ -226,12 +226,27 @@ def run_one_scenario(patient,
     return results
 
 
+def parse_extra_inputs(args):
+    kwargs = {}
+    if hasattr(args, 'sex'):
+        kwargs['sex'] = args.sex
+    if hasattr(args, 'age'):
+        kwargs['age'] = args.age
+    if hasattr(args, 'race'):
+        kwargs['race'] = args.race
+    if hasattr(args, 'nihss'):
+        kwargs['nihss'] = args.nihss
+    if hasattr(args, 'time_since_symptoms'):
+        kwargs['time_since_symptoms'] = args.time_since_symptoms
+    return kwargs
+
+
 def main(args):
     times_file = args.times_file
     hospitals_file = args.hospital_file
     patient_count = args.patients
     simulation_count = args.simulations
-    kwargs = vars(args)
+    kwargs = parse_extra_inputs(args)
 
     # if args.base_dir:
     #     base_dir = args.base_dir  # dir to put output file in
@@ -271,7 +286,7 @@ def main_default_dtn(args):
     hospitals_file = args.hospital_file
     patient_count = args.patients
     simulation_count = args.simulations
-    kwargs = vars(args)
+    kwargs = parse_extra_inputs(args)
 
     # if args.base_dir:
     #     base_dir = args.base_dir  # dir to put output file in
