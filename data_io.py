@@ -143,7 +143,7 @@ def get_header(hospitals):
     return fieldnames
 
 
-def write_detailed_markov_outcomes(markov, fileprefix, point, times=None):
+def write_detailed_markov_outcomes(markov, fileprefix, point, times=None, write=False):
     filedir = Path(fileprefix)
     fileparent_dir = filedir.parent
     filename_prefix = filedir.stem + f'_loc={point}'
@@ -168,29 +168,28 @@ def write_detailed_markov_outcomes(markov, fileprefix, point, times=None):
         times_df = get_times_df(times)
         df = df.append(times_df)
     out_cols = ['Variable'] + strategies
-    df[out_cols].to_csv(
-        fileparent_dir / (filename_prefix + '_detailed_outcome.csv'))
-    # qalys_df.to_csv(fileparent_dir/(filename_prefix+'_qalys.csv'))
-    # costs_df.to_csv(fileparent_dir/(filename_prefix+'_costs.csv'))
-    # lys_df.to_csv(fileparent_dir/(filename_prefix+'_lys.csv'))
+    outpath = fileparent_dir / (filename_prefix + '_detailed_outcome.csv')
+    if write: df[out_cols].to_csv(outpath)
+    return df[out_cols], outpath
 
-
-def write_out_p_good(markov, fileprefix, point):
-    filedir = Path(fileprefix)
-    fileparent_dir = filedir.parent
-    # rearrange loc and AHAversion tag in filename (bad way)
-    filename_prefix = filedir.stem + f'_loc={point}'
-    param_list = filename_prefix.split('_')
-    tmp_version = param_list[-2]
-    param_list[-2] = param_list[-1]
-    param_list[-1] = tmp_version
-    filename_prefix = '_'.join(param_list)
-    filename = fileparent_dir / (filename_prefix + f'_pgood.csv')
-    p_good = markov.ais_outcomes.p_good
-    strategies = markov.ais_outcomes.strategies
-    df = pd.DataFrame(p_good, columns=strategies)
-    df.index.name = 'Simulation'
-    df.to_csv(filename)
+def write_aggregated_markov_outcomes(markov, fileprefix, point, times=None, optimal_strategy = None
+    , write = True):
+    df, outpath =  write_detailed_markov_outcomes(markov, fileprefix, point, times)
+    agg_df = df.groupby('Variable').describe()
+    if optimal_strategy:
+        # label which strategy is optimal in agg_df
+        # reconstruct column multi index
+        c_l = []
+        for c in agg_df.columns:
+            new_c = list(c)
+            if new_c[0] == optimal_strategy:
+                new_c[0] = optimal_strategy + ' - most C/E'
+            c_l.append(tuple(new_c))
+        agg_df.columns = pd.MultiIndex.from_tuples(c_l)
+    agg_df.columns.names=['Strategy','statistic']
+    agg_outpath = outpath.parent/(outpath.stem.replace('detailed','aggregated')+outpath.suffix)
+    if write: agg_df.to_csv(agg_outpath)
+    return agg_df, agg_outpath
 
 
 def write_out_times(times, fileprefix, point):

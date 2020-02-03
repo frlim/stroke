@@ -199,10 +199,11 @@ def run_one_scenario(patient,
     if res_name:
         # output details of each simulation: Cost and QALY
         #dimension: simulation# -> row index,hospital-> columns
-        data_io.write_detailed_markov_outcomes(
-            markov_results, res_name, point, times=ais_times)
-        # data_io.write_out_p_good(markov_results,res_name,point)
-        # data_io.write_out_times(ais_times,res_name,point)
+        # data_io.write_detailed_markov_outcomes(
+        #     markov_results, res_name, point, times=ais_times)
+        data_io.write_aggregated_markov_outcomes(
+            markov_results, res_name, point, times=ais_times,
+            optimal_strategy= str(these_results.optimal_strategy), write = True)
 
     results = collections.OrderedDict()
     results['Location'] = point
