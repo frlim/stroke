@@ -191,7 +191,8 @@ class StrokeCenter:
             not None, it will be treated as the n draws from a uniform [0,1] RV
             to set the door to needle time without a new draw.
         '''
-        self._door_to_needle = self._dtn_dist.sample()
+        self._door_to_needle = self._dtn_dist.sample(with_uncertainty,
+                                                     perf_level)
 
     def set_door_to_puncture(self, n=1, with_uncertainty=True,
                              perf_level=None):
@@ -202,4 +203,5 @@ class StrokeCenter:
         '''
         if self.center_type is CenterType.PRIMARY:
             raise ValueError("Can't set door to puncture on primary center.")
-        self._door_to_puncture = self._dtp_dist.sample()
+        self._door_to_puncture = self._dtp_dist.sample(with_uncertainty,
+                                                       perf_level)
