@@ -210,7 +210,7 @@ def run_one_scenario(patient,
     results['Location'] = point
     results['Patient'] = first_pat_num + pat_num
     results['Use Real DTN'] = uses_hospital_performance
-    results['Varying Hospitals'] = fix_performance
+    results['Varying Hospitals'] = not fix_performance
     results['PSC Count'] = len(model.primaries)
     results['CSC Count'] = len(model.comprehensives)
     results['Sex'] = str(patient.sex)

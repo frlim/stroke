@@ -252,6 +252,7 @@ def save_patient(outfile, patient_results, hospitals):
     Write the results from a single patient at many locations to the given
         file. Results should be a list of dictionaries, one for each row
         of the output where keys are column names.
+    Will append to an existing result file if one exists
     '''
     # If not result file currentl exists, create a blank one
     if not os.path.isfile(outfile):
@@ -265,7 +266,7 @@ def save_patient(outfile, patient_results, hospitals):
             writer.writeheader()
 
     # Read in existing result file
-    keys = ['Location', 'Use Real DTN', 'Varying Hospitals',
+    keys = ['Location', 'Patient', 'Use Real DTN', 'Varying Hospitals',
             'Sex', 'Age', 'RACE','Symptoms']
     df = pd.read_csv(outfile)
     df = df.set_index(keys)
@@ -277,7 +278,8 @@ def save_patient(outfile, patient_results, hospitals):
     # Update result file with new patient results
     df.update(patient_results_df,overwrite=True)
     # Add in new patient_results that did not exist in result file
-    df = df.append(patient_results_df[~patient_results_df.index.isin(df.index)])
+    df = df.append(patient_results_df[~patient_results_df.index.isin(df.index)],
+                   sort=False)
 
     # Save result file
-    df.to_csv(outfile, index=False)
+    df.to_csv(outfile)
