@@ -126,9 +126,10 @@ def run_model_real_data(
         and contain transfer destinations and times for all primary hospitals.
         kwargs -- passed through to inputs.Inputs.random to hold parameters
                     constant
+        Also need dtn_file here to use real hospital performance data
     '''
     hospitals = data_io.get_hospitals(hospitals_file, dtn_file)
-    hospital_lists = [(True, hospitals)]
+    hospital_lists = [(True, hospitals)] # True means using hospital data
 
     patients = [Patient.random(**kwargs) for _ in range(patient_count)]
     sex = patients[0].sex
@@ -208,7 +209,8 @@ def run_one_scenario(patient,
     results = collections.OrderedDict()
     results['Location'] = point
     results['Patient'] = first_pat_num + pat_num
-    results['Varying Hospitals'] = uses_hospital_performance
+    results['Use Real DTN'] = uses_hospital_performance
+    results['Varying Hospitals'] = fix_performance
     results['PSC Count'] = len(model.primaries)
     results['CSC Count'] = len(model.comprehensives)
     results['Sex'] = str(patient.sex)
