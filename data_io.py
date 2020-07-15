@@ -280,5 +280,4 @@ def save_patient(outfile, patient_results, hospitals):
     df = df.append(patient_results_df[~patient_results_df.index.isin(df.index)])
 
     # Save result file
-    df = df.astype('int64', errors='ignore', copy=False)
     df.to_csv(outfile, index=False)
