@@ -109,6 +109,12 @@ class Results:
             pbc = self.percentages_by_center
             return max(cbc, key=lambda center: pbc[center])
 
+    @property
+    def optimal_strategy(self):
+        cbs = self._optimal_counts
+        if cbs is not None:
+            return max(cbs, key=lambda center: cbs[center])
+
 
 def get_optimal(data, threshold):
     """
