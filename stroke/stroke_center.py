@@ -56,6 +56,31 @@ class HospitalTimeDistribution:
         third = np.random.uniform(med, 212)
         return cls(first, med, third)
 
+class HospitalTimeDistributionHybrid(HospitalTimeDistribution):
+    """ Capture distribution of real hospital performance time
+    but also generic distribution"""
+
+    def __init__(self, first_quartile, median, third_quartile,
+                 sample_size, generic_distribution):
+        super().__init__(first_quartile, median, third_quartile)
+        self.sample_size = sample_size
+        self.sample_threshold = self.sample_size/100
+        self.generic_distribution = generic_distribution
+
+    def sample(self, with_uncertainty=True, perf_level=None):
+        if self.sample_size >= 100:
+            # sample solely from real distribution
+            val = super().sample()
+        else:
+            chance = np.random.uniform(0,1)
+            if chance <= self.sample_threshold:
+                # sample from real
+                val = super().sample()
+            else:
+                # sample of generic distribution
+                val = self.generic_distribution.sample()
+        return val
+
 
 PRIMARY_DIST = HospitalTimeDistribution(47, 61, 83)
 COMP_DIST = HospitalTimeDistribution(39, 52, 70)

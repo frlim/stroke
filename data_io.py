@@ -42,9 +42,13 @@ def get_hospitals(hospital_file, dtn_file=None):
         long_name = f'Center {center_id}'
         dtn_availability = row[paths.DTN_COLS].notna().all()
         if dtn_availability:
-            dtn_dist = sc.HospitalTimeDistribution(
+            if center_type == 'Primary':
+                generic_distribution = sc.PRIMARY_DIST
+            else:
+                generic_distribution =  sc.COMP_DIST
+            dtn_dist = sc.HospitalTimeDistributionHybrid(
                 float(row[paths.DTN_COLS[0]]), float(row[paths.DTN_COLS[1]]),
-                float(row[paths.DTN_COLS[2]]))
+                float(row[paths.DTN_COLS[2]]), generic_distribution)
         else:
             if center_type == 'Primary':
                 dtn_dist = sc.PRIMARY_DIST
@@ -53,9 +57,11 @@ def get_hospitals(hospital_file, dtn_file=None):
         if center_type == 'Comprehensive':
             dtp_availability = row[paths.DTP_COLS].notna().all()
             if dtp_availability:
+                generic_distribution = sc.DTP_DIST
                 dtp_dist = sc.HospitalTimeDistribution(
                     float(row[paths.DTP_COLS[0]]), float(
-                        row[paths.DTP_COLS[1]]), float(row[paths.DTP_COLS[2]]))
+                        row[paths.DTP_COLS[1]]), float(row[paths.DTP_COLS[2]]),
+                    generic_distribution)
             else:
                 dtp_dist = sc.DTP_DIST
         else:
