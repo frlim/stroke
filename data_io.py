@@ -48,7 +48,8 @@ def get_hospitals(hospital_file, dtn_file=None):
                 generic_distribution =  sc.COMP_DIST
             dtn_dist = sc.HospitalTimeDistributionHybrid(
                 float(row[paths.DTN_COLS[0]]), float(row[paths.DTN_COLS[1]]),
-                float(row[paths.DTN_COLS[2]]), generic_distribution)
+                float(row[paths.DTN_COLS[2]]), float(row[paths.DTN_COLS[3]]),
+                generic_distribution)
         else:
             if center_type == 'Primary':
                 dtn_dist = sc.PRIMARY_DIST
@@ -58,9 +59,10 @@ def get_hospitals(hospital_file, dtn_file=None):
             dtp_availability = row[paths.DTP_COLS].notna().all()
             if dtp_availability:
                 generic_distribution = sc.DTP_DIST
-                dtp_dist = sc.HospitalTimeDistribution(
+                dtp_dist = sc.HospitalTimeDistributionHybrid(
                     float(row[paths.DTP_COLS[0]]), float(
                         row[paths.DTP_COLS[1]]), float(row[paths.DTP_COLS[2]]),
+                    float(row[paths.DTP_COLS[3]]),
                     generic_distribution)
             else:
                 dtp_dist = sc.DTP_DIST
@@ -135,18 +137,6 @@ def get_next_patient_number(results_file):
         return max(patients) + 1
     else:
         return 0
-
-
-def get_header(hospitals):
-    '''
-    Get a list of column names for an output file with the given hospitals
-    '''
-    fieldnames = [
-        'Location', 'Patient', 'Varying Hospitals', 'PSC Count', 'CSC Count',
-        'Sex', 'Age', 'Symptoms', 'RACE'
-    ]
-    fieldnames += [str(hospital) for hospital in hospitals]
-    return fieldnames
 
 
 def write_detailed_markov_outcomes(markov, fileprefix, point, times=None, write=False):
@@ -263,57 +253,32 @@ def save_patient(outfile, patient_results, hospitals):
         file. Results should be a list of dictionaries, one for each row
         of the output where keys are column names.
     '''
-    fieldnames = get_header(hospitals)
-
+    # If not result file currentl exists, create a blank one
     if not os.path.isfile(outfile):
+        fieldnames = [
+            'Location', 'Patient', 'Use Real DTN', 'Varying Hospitals',
+            'PSC Count', 'CSC Count', 'Sex', 'Age', 'Symptoms', 'RACE'
+        ]
+        fieldnames += [str(hospital) for hospital in hospitals]
         with open(outfile, 'w') as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
 
+    # Read in existing result file
+    keys = ['Location', 'Use Real DTN', 'Varying Hospitals',
+            'Sex', 'Age', 'RACE','Symptoms']
     df = pd.read_csv(outfile)
-    keys = result_input_keys()
-    for results in patient_results:
-        # # add zero counts for hospital that are never optimal
-        # zero_c = {
-        #     str(hospital): 0
-        #     for hospital in hospitals if str(hospital) not in results.keys()
-        # }
-        # results.update(zero_c)
-        try:
-            for i, k in enumerate(keys):
-                if i == 0:
-                    # print(df[k])
-                    l = df[k] == results[k]
-                else:
-                    l = l & (df[k] == results[k])
-            if l.any():
-                row_num = df.loc[l].index[0]
-                # transfer old patient number to new result
-                pid = df['Patient'].iloc[row_num]
-                results['Patient'] = pid
-                # replace with new result
-                df.iloc[row_num] = pd.Series(results)
-            else:
-                # append to existing data frame
-                df = df.append(pd.Series(results), ignore_index=True)
-        except:
-            df = df.append(pd.Series(results), ignore_index=True)
-    # Save results
-    # convert to integer
+    df = df.set_index(keys)
+
+    # Turn current patient results into a DataFrame
+    patient_results_df = pd.DataFrame.from_records(patient_results)
+    patient_results_df = patient_results_df.set_index(keys)
+
+    # Update result file with new patient results
+    df.update(patient_results_df,overwrite=True)
+    # Add in new patient_results that did not exist in result file
+    df = df.append(patient_results_df[~patient_results_df.index.isin(df.index)])
+
+    # Save result file
     df = df.astype('int64', errors='ignore', copy=False)
     df.to_csv(outfile, index=False)
-    # To minmize memory usage
-    del df
-    gc.collect()
-
-
-def result_input_keys():
-    'Dictionary with all keys and empty value'
-    keys = []
-    keys.append('Location')
-    keys.append('Varying Hospitals')
-    keys.append('Sex')
-    keys.append('Age')
-    keys.append('RACE')
-    keys.append('Symptoms')
-    return keys
