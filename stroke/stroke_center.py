@@ -17,7 +17,7 @@ class HospitalTimeDistribution:
         self.median = median
         self.third_quartile = third_quartile
 
-    def sample(self, with_uncertainty=True, perf_level=None):
+    def sample(self, n=1, with_uncertainty=True, perf_level=None):
         """ Sample time from a uniform distribution with quartile times saved
          If with_uncertainty, then will sample completely randomly
             If given perf_level, will be calculated based on uniform distribution
@@ -67,18 +67,18 @@ class HospitalTimeDistributionHybrid(HospitalTimeDistribution):
         self.sample_threshold = self.sample_size/100
         self.generic_distribution = generic_distribution
 
-    def sample(self, with_uncertainty=True, perf_level=None):
+    def sample(self, n=1, with_uncertainty=True, perf_level=None):
         if self.sample_size >= 100:
             # sample solely from real distribution
-            val = super().sample()
+            val = super().sample(n,with_uncertainty,perf_level)
         else:
             chance = np.random.uniform(0,1)
             if chance <= self.sample_threshold:
                 # sample from real
-                val = super().sample()
+                val = super().sample(n,with_uncertainty,perf_level)
             else:
                 # sample of generic distribution
-                val = self.generic_distribution.sample()
+                val = self.generic_distribution.sample(n,with_uncertainty,perf_level)
         return val
 
 
@@ -216,7 +216,7 @@ class StrokeCenter:
             not None, it will be treated as the n draws from a uniform [0,1] RV
             to set the door to needle time without a new draw.
         '''
-        self._door_to_needle = self._dtn_dist.sample(with_uncertainty,
+        self._door_to_needle = self._dtn_dist.sample(n, with_uncertainty,
                                                      perf_level)
 
     def set_door_to_puncture(self, n=1, with_uncertainty=True,
@@ -228,5 +228,5 @@ class StrokeCenter:
         '''
         if self.center_type is CenterType.PRIMARY:
             raise ValueError("Can't set door to puncture on primary center.")
-        self._door_to_puncture = self._dtp_dist.sample(with_uncertainty,
+        self._door_to_puncture = self._dtp_dist.sample(n, with_uncertainty,
                                                        perf_level)

@@ -15,9 +15,20 @@ else: # FOR TED
     HOSPITAL_PATH = Path('data/hospitals/NY_MA_NJ_CT_NH_RI_ME_VT_n=10000.csv')
     TIMES_PATH = Path('data/travel_times/NY_MA_NJ_CT_NH_RI_ME_VT_n=10000.csv')
 
+# for local MAC, work from home
+# _data_path = Path.home()/'Stroke_scripts'/'network_data'
+_data_path = Path('/Volumes/DOM_DGM_HUR$/stroke_data')/ 'processed_data'
+# door-to-needle times (sensitive data - hospitals de-identified)
+DTN_FILE = _data_path/'deidentified_DTN_master_v3.xlsx'
+# directory to save model's output (need a lot of storage space)
+RES_NAME_PREFIX = Path.home()/'Stroke_scripts/stroke_model_output/output_071520'
+# path to travel times
+HOSPITAL_PATH = Path('data/hospitals/NY_MA_NJ_CT_NH_RI_ME_VT_n=10000.csv')
+TIMES_PATH = Path('data/travel_times/NY_MA_NJ_CT_NH_RI_ME_VT_n=10000.csv')
 
-DTN_COLS = ['IVTPA_P25', 'IVTPA_MEDIAN', 'IVTPA_P75']
-DTP_COLS = ['IATPA_P25', 'IATPA_MEDIAN', 'IATPA_P75']
+
+DTN_COLS = ['IVTPA_P25', 'IVTPA_MEDIAN', 'IVTPA_P75','IVTPA_N']
+DTP_COLS = ['IATPA_P25', 'IATPA_MEDIAN', 'IATPA_P75','IATPA_N']
 
 def load_dtn(dtn_file=DTN_FILE):
     return pd.read_excel(dtn_file).set_index('HOSP_KEY')
