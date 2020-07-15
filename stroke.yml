@@ -1,7 +1,10 @@
 name: stroke
+channels:
+  - conda-forge
 dependencies:
-- python=3
-- numpy
-- tqdm
-- pandas
-- xlrd
+  - numpy
+  - pandas
+  - xlwings
+  - xlrd
+  - googlemaps
+  - tqdm
