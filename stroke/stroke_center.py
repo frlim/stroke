@@ -17,6 +17,24 @@ class HospitalTimeDistribution:
         self.median = median
         self.third_quartile = third_quartile
 
+    def sample(self, with_uncertainty=True, perf_level=None):
+        """ Sample time from a uniform distribution with quartile times saved
+         If with_uncertainty, then will sample completely randomly
+            If given perf_level, will be calculated based on uniform distribution
+         else return median time """
+        if not with_uncertainty and (perf_level is not None):
+            raise ValueError('preset level specified but with_uncertainty is turned off')
+        if with_uncertainty:
+            low = self.first_quartile
+            high = self.third_quartile
+            if perf_level:
+                val = low + perf_level * (high - low)
+            else:
+                val = np.random.uniform(low, high, n)
+        else:
+            val = self.median
+        return val
+
     @classmethod
     def random_primary(cls):
         med = np.random.uniform(47, 83)
@@ -173,19 +191,7 @@ class StrokeCenter:
             not None, it will be treated as the n draws from a uniform [0,1] RV
             to set the door to needle time without a new draw.
         '''
-        if not with_uncertainty and perf_level is not None:
-            raise ValueError('preset level cannot be used without uncertainty')
-        if with_uncertainty:
-            low = self._dtn_dist.first_quartile
-            high = self._dtn_dist.third_quartile
-            if perf_level is None:
-                val = np.random.uniform(low, high, n)
-            else:
-                val = low + perf_level * (high - low)
-        else:
-            val = self._dtn_dist.median
-
-        self._door_to_needle = val
+        self._door_to_needle = self._dtn_dist.sample()
 
     def set_door_to_puncture(self, n=1, with_uncertainty=True,
                              perf_level=None):
@@ -196,16 +202,4 @@ class StrokeCenter:
         '''
         if self.center_type is CenterType.PRIMARY:
             raise ValueError("Can't set door to puncture on primary center.")
-        if not with_uncertainty and perf_level is not None:
-            raise ValueError('preset level cannot be used without uncertainty')
-        if with_uncertainty:
-            low = self._dtp_dist.first_quartile
-            high = self._dtp_dist.third_quartile
-            if perf_level is None:
-                val = np.random.uniform(low, high, n)
-            else:
-                val = low + perf_level * (high - low)
-        else:
-            val = self._dtp_dist.median
-
-        self._door_to_puncture = val
+        self._door_to_puncture = self._dtp_dist.sample()
