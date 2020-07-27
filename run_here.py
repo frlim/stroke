@@ -11,7 +11,7 @@ if __name__ == '__main__':
     hospital_path = paths.HOSPITAL_PATH
     times_path = paths.TIMES_PATH
     #s_default - 'auto' for automatic mode or else enter an integer
-    s_default = 1000  #'auto'
+    s_default = 10000  #'auto'
     upper = 1
 
     patient_profiles = pd.read_csv(
@@ -25,6 +25,7 @@ if __name__ == '__main__':
             (f'times={times_path.stem}_hospitals={hospital_path.stem}_pid={id}_sex={sex_str}_age={age}'
             + f'_nihss={nihss}_symptom={time_since_symptoms}_nsim={s_default}_beAHA.csv')
         )
+        locations = ['L298'] # or None to run all locations
         args = Namespace(
             patient_count=1,
             simulation_count=s_default,
@@ -35,9 +36,10 @@ if __name__ == '__main__':
             age=age,
             nihss=nihss,
             time_since_symptoms=time_since_symptoms,
+            locations=locations,
             res_name=res_name)
-        print("Before AHA")
-        main.run_model_defaul_dtn(**vars(args))
+        # print("Before AHA")
+        # main.run_model_defaul_dtn(**vars(args))
 
         res_name = str(
             res_name_prefix /
@@ -54,6 +56,8 @@ if __name__ == '__main__':
             age=age,
             nihss=nihss,
             time_since_symptoms=time_since_symptoms,
+            locations=locations,
             res_name=res_name)
         print("After AHA")
         main.run_model_real_data(**vars(args))
+        break
