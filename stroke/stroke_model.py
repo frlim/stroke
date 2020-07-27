@@ -12,7 +12,7 @@ class StrokeModel:
     @property
     def hospitals(self):
         """A list of all hospitals with valid associated travel times."""
-        return [x for x in self._hospitals if not np.isnan(x.time)]
+        return [x for x in self._hospitals if not x.time_dist.isnan()]
 
     @property
     def primaries(self):
@@ -38,17 +38,16 @@ class StrokeModel:
     def set_times(self, times):
         '''
         Given a series with center_id indices and travel time values, update
-            primaries and comprehensives to use these times
+            primaries and comprehensives to use these times.
+        Each time value must be a list of [no_traffic_time,traffic_time]
         '''
         for center in self._hospitals:
             center_id = str(center.center_id)
             if center_id in times:
-                try:
-                    center.time = float(times[center_id])
-                except ValueError:
-                    center.time = np.NaN
+                center.time_dist = sc.TravelTimeDistribution(*times[center_id])
             else:
-                center.time = np.NaN
+                center.time_dist = None
+
 
     def run(self, n=1000, add_time_uncertainty=True, add_lvo_uncertainty=True,
             fix_performance=False):

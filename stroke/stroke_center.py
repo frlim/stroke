@@ -56,6 +56,7 @@ class HospitalTimeDistribution:
         third = np.random.uniform(med, 212)
         return cls(first, med, third)
 
+PURELY_REAL_THRESH = 100
 class HospitalTimeDistributionHybrid(HospitalTimeDistribution):
     """ Capture distribution of real hospital performance time
     but also generic distribution"""
@@ -64,23 +65,38 @@ class HospitalTimeDistributionHybrid(HospitalTimeDistribution):
                  sample_size, generic_distribution):
         super().__init__(first_quartile, median, third_quartile)
         self.sample_size = sample_size
-        self.sample_threshold = self.sample_size/100
+        # if sample size >= this num, only pool from real dist
+        self.sample_threshold = self.sample_size/PURELY_REAL_THRESH
         self.generic_distribution = generic_distribution
 
     def sample(self, n=1, with_uncertainty=True, perf_level=None):
-        if self.sample_size >= 100:
+        if self.sample_size >= PURELY_REAL_THRESH:
             # sample solely from real distribution
             val = super().sample(n,with_uncertainty,perf_level)
         else:
-            chance = np.random.uniform(0,1)
-            if chance <= self.sample_threshold:
-                # sample from real
-                val = super().sample(n,with_uncertainty,perf_level)
-            else:
-                # sample of generic distribution
-                val = self.generic_distribution.sample(n,with_uncertainty,perf_level)
+            n_real = int(n*self.sample_threshold)
+            n_generic = n-n_real
+            val_real = super().sample(n_real,with_uncertainty,perf_level)
+            val_generic = self.generic_distribution.sample(
+                        n_generic,with_uncertainty,perf_level)
+            val = np.concatenate((val_real,val_generic))
+            np.random.shuffle(val)# shuffle elements inside
         return val
 
+class TravelTimeDistribution:
+    def __init__(self, no_traffic, traffic):
+        self.no_traffic = no_traffic
+        self.traffic = traffic
+
+    def sample(self, n=1):
+        if self.no_traffic != self.traffic:
+            val = np.random.uniform(self.no_traffic,self.traffic,n)
+        else:
+            val = self.no_traffic
+        return val
+
+    def isnan(self):
+        return np.any(np.isnan([self.no_traffic,self.traffic]))
 
 PRIMARY_DIST = HospitalTimeDistribution(47, 61, 83)
 COMP_DIST = HospitalTimeDistribution(39, 52, 70)
@@ -139,18 +155,23 @@ class StrokeCenter:
     def door_to_puncture(self):
         return self._door_to_puncture
 
+    @property
+    def time(self):
+        return self._time
+
     def __init__(self, full_name, short_name, center_type, center_id,
-                 time=None, dtn_dist=None, dtp_dist=None):
+                 time_dist=None, dtn_dist=None, dtp_dist=None):
         self._id = StrokeCenter.get_next_id()
         self._center_id = center_id
         self._full_name = full_name
         self._short_name = short_name
         self._center_type = center_type
-        self.time = time
         self._transfer_destination = None
         self._transfer_time = None
         self._door_to_needle = None
         self._door_to_puncture = None
+        self._time = None
+        self.time_dist = time_dist
 
         # Distributions for door to needle and door to puncture times
         if dtn_dist is None:
@@ -218,6 +239,11 @@ class StrokeCenter:
         '''
         self._door_to_needle = self._dtn_dist.sample(n, with_uncertainty,
                                                      perf_level)
+
+    def set_travel_time(self, n=1):
+        '''Set the travel time for this stroke center by sampling from
+            the stored distribution.'''
+        self._time = self.time_dist.sample(n)
 
     def set_door_to_puncture(self, n=1, with_uncertainty=True,
                              perf_level=None):

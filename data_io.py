@@ -116,7 +116,22 @@ def get_times(times_file):
         as keys and travel times as values. The input file is assumed to be
         formatted like `data/travel_times/Demo.csv`.
     '''
-    return pd.read_csv(times_file).set_index('LOC_ID').to_dict('index')
+    def _parse_time(time_val):
+        if ',' in time_val:
+            time_arr = [float(t.strip()) for t in time_val.split(',')]
+            if len(time_arr) != 2:
+                err_msg = 'Time value needs to be in format of'
+                err_msg += 'no_traffic_time, traffic_time or just one number'
+                raise ValueError(err_msg)
+            return [np.min(time_arr),np.max(time_arr)]
+        else:
+            val = float(time_val)
+            return [val,val]
+    times = pd.read_csv(times_file,dtype=str,low_memory=False).set_index('LOC_ID')
+    times = times.astype(str)
+    times = times.applymap(_parse_time)
+    return times.to_dict('index')
+
 
 
 def get_next_patient_number(results_file):
@@ -139,7 +154,8 @@ def get_next_patient_number(results_file):
         return 0
 
 
-def write_detailed_markov_outcomes(markov, fileprefix, point, times=None, write=False):
+def write_detailed_markov_outcomes(markov, fileprefix, point, times=None,
+                                   optimal_strategy = None, write=False):
     filedir = Path(fileprefix)
     fileparent_dir = filedir.parent
     filename_prefix = filedir.stem + f'_loc={point}'
@@ -165,8 +181,12 @@ def write_detailed_markov_outcomes(markov, fileprefix, point, times=None, write=
         df = df.append(times_df)
     out_cols = ['Variable'] + strategies
     outpath = fileparent_dir / (filename_prefix + '_detailed_outcome.csv')
-    if write: df[out_cols].to_csv(outpath)
-    return df[out_cols], outpath
+    df_out = df[out_cols]
+    if optimal_strategy:
+        df_out.columns = [c + ' - most C/E' if c == optimal_strategy else c
+                      for c in df_out.columns]
+    if write: df_out.to_csv(outpath)
+    return df_out, outpath
 
 def write_aggregated_markov_outcomes(markov, fileprefix, point, times=None, optimal_strategy = None
     , write = True):

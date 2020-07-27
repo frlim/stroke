@@ -4,7 +4,7 @@ Strategies with associated stroke centers
 import functools
 from . import stroke_center as sc
 from .constants import StrategyKind
-
+import numpy as np
 
 @functools.total_ordering
 class Strategy:
@@ -65,8 +65,8 @@ class Strategy:
             strategy kind as primary < comprehensive < drip and ship.
             Finally sort alphabetically by center name
         """
-        return ((self.center.time, self.kind, self.center.full_name) <
-                (other.center.time, other.kind, other.center.full_name))
+        return ((np.mean(self.center.time), self.kind, self.center.full_name) <
+                (np.mean(other.center.time), other.kind, other.center.full_name))
 
     @classmethod
     def primary(cls, center):

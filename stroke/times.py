@@ -117,6 +117,7 @@ class IschemicTimes:
         comprehensives = []
         for hospital in hospitals:
             hospital.set_door_to_needle(n, add_time_uncertainty, dtn_perf)
+            hospital.set_travel_time(n)
             if hospital.center_type is sc.CenterType.PRIMARY:
                 # also initialize transfer destination times since they may not
                 #   be in self.comprehensives
@@ -146,8 +147,11 @@ class IschemicTimes:
         for hospital in hospitals:
             travel.append(hospital.time)
             dtn.append(hospital.door_to_needle)
-        time_to_hospital = np.hstack(travel)
+        # time_to_hospital = np.hstack(travel)
+        time_to_hospital = np.dstack(travel)[0]
         dtn = np.dstack(dtn)[0]
+        # print("Travel time: {}".format(time_to_hospital.shape))
+        # print("DTN time: {}".format(dtn.shape))
 
         return self.patient.symptom_time + time_to_hospital + dtn
 
@@ -157,7 +161,8 @@ class IschemicTimes:
         for comp in self._comprehensives:
             travel.append(comp.time)
             dtp.append(comp.door_to_puncture)
-        time_to_hospital = np.hstack(travel)
+        # time_to_hospital = np.hstack(travel)
+        time_to_hospital = np.dstack(travel)[0]
         dtp = np.dstack(dtp)[0]
 
         time = self.patient.symptom_time + time_to_hospital + dtp
@@ -181,7 +186,8 @@ class IschemicTimes:
                 transfer_time.append(primary.transfer_time)
                 transfer_to_puncture.append(comp.door_to_puncture -
                                             primary.door_to_needle)
-        to_primary = np.hstack(to_primary)
+        # to_primary = np.hstack(to_primary)
+        to_primary = np.dstack(to_primary)[0]
         door_to_needle = np.dstack(door_to_needle)[0]
         transfer_time = np.hstack(transfer_time)
         transfer_to_puncture = np.dstack(transfer_to_puncture)[0]

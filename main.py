@@ -14,6 +14,7 @@ try:
 except NameError:
     from tqdm import tqdm
 import paths
+from pathlib import Path
 
 NON_COUNT_COLS = [
     'Location', 'Patient', 'Varying Hospitals', 'PSC Count', 'CSC Count',
@@ -201,7 +202,8 @@ def run_one_scenario(patient,
         # output details of each simulation: Cost and QALY
         #dimension: simulation# -> row index,hospital-> columns
         # data_io.write_detailed_markov_outcomes(
-        #     markov_results, res_name, point, times=ais_times)
+        #     markov_results, res_name, point, times=ais_times,
+        #     optimal_strategy= str(these_results.optimal_strategy), write = True)
         data_io.write_aggregated_markov_outcomes(
             markov_results, res_name, point, times=ais_times,
             optimal_strategy= str(these_results.optimal_strategy), write = True)
