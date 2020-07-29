@@ -95,7 +95,7 @@ def run_model_defaul_dtn(
     if cores is False:
         pool = False
     else:
-        pool = mp.Pool(mp.cpu_count())
+        pool = mp.Pool(mp.cpu_count()-1)
     for pat_num, patient in enumerate(tqdm(patients, desc='Patients')):
         patient_results = []
         for point, these_times in tqdm(
@@ -161,7 +161,7 @@ def run_model_real_data(
     if cores is False:
         pool = False
     else:
-        pool = mp.Pool(mp.cpu_count())
+        pool = mp.Pool(mp.cpu_count()-1)
     for pat_num, patient in enumerate(tqdm(patients, desc='Patients')):
         patient_results = []
         for point, these_times in tqdm(
