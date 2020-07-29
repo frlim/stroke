@@ -278,7 +278,7 @@ def save_patient(outfile, patient_results, hospitals):
     if not os.path.isfile(outfile):
         fieldnames = [
             'Location', 'Patient', 'Use Real DTN', 'Varying Hospitals',
-            'PSC Count', 'CSC Count', 'Sex', 'Age', 'Symptoms', 'RACE'
+            'PSC Count', 'CSC Count', 'Sex', 'Age', 'Symptoms', 'RACE','NIHSS',
         ]
         fieldnames += [str(hospital) for hospital in hospitals]
         with open(outfile, 'w') as f:
@@ -287,12 +287,17 @@ def save_patient(outfile, patient_results, hospitals):
 
     # Read in existing result file
     keys = ['Location', 'Patient', 'Use Real DTN', 'Varying Hospitals',
-            'Sex', 'Age', 'RACE','Symptoms']
+            'Sex', 'Age', 'RACE','NIHSS','Symptoms']
     df = pd.read_csv(outfile)
+    df[keys] = df[keys].fillna('')
     df = df.set_index(keys)
 
     # Turn current patient results into a DataFrame
     patient_results_df = pd.DataFrame.from_records(patient_results)
+    if 'NIHSS' not in patient_results_df.columns:
+        patient_results_df = patient_results_df.assign(NIHSS='')
+    elif 'RACE' not in patient_results_df.columns:
+        patient_results_df = patient_results_df.assign(RACE='')
     patient_results_df = patient_results_df.set_index(keys)
 
     # Update result file with new patient results

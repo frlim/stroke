@@ -8,26 +8,27 @@ import numpy.random as rng
 class Patient:
     """Patient-level inputs."""
 
-    def __init__(self, sex, age, symptom_time, severity):
+    def __init__(self, sex, age, symptom_time, severity, pid=-1):
         """Initialize a patient with required inputs"""
+        self.pid = pid
         self.sex = sex
         self.age = age
         self.symptom_time = symptom_time
         self.severity = severity
 
     @classmethod
-    def with_RACE(cls, sex, age, symptom_time, race):
+    def with_RACE(cls, sex, age, symptom_time, race , pid=-1):
         """Generate a patient with severity characterized by RACE score"""
-        return cls(sex, age, symptom_time, sev.RACE(race))
+        return cls(sex, age, symptom_time, sev.RACE(race), pid)
 
     @classmethod
-    def with_NIHSS(cls, sex, age, symptom_time, nihss):
+    def with_NIHSS(cls, sex, age, symptom_time, nihss, pid=-1):
         """Generate a patient with severity characterized by NIHSS"""
         return cls(sex, age, symptom_time, sev.NIHSS(nihss))
 
     @classmethod
     def random(cls, sex=None, age=None, race=None, nihss=None,
-               time_since_symptoms=None):
+               time_since_symptoms=None, pid=-1):
         """
         Generate a random patient. Fix any input by passing it as an argument.
         """
@@ -48,4 +49,4 @@ class Patient:
         if time_since_symptoms is None:
             time_since_symptoms = rng.uniform(10, 100)
 
-        return cls(sex, age, time_since_symptoms, severity)
+        return cls(sex, age, time_since_symptoms, severity, pid)

@@ -7,7 +7,9 @@ import collections
 import multiprocessing as mp
 import data_io
 from stroke.patient import Patient
-import stroke.stroke_model as sm
+from stroke import severity,constants,stroke_model as sm
+# import stroke.stroke_model as sm
+import numpy as np
 try:
     get_ipython
     from tqdm import tqdm_notebook as tqdm
@@ -38,6 +40,19 @@ def results_name(base_dir, times_file, hospitals_file, fix_performance,
     out_file = os.path.join(out_dir, out_name)
     return out_file
 
+def _instanstiate_patients(patient_count,**kwargs):
+    patient_characteristics = list(locals().keys())
+    have_pc_and_race = np.isin(['age','sex','time_since_symptoms','race'],
+                      patient_characteristics).all()
+    have_pc_and_nihss = np.isin(['age','sex','time_since_symptoms','nihss'],
+                      patient_characteristics).all()
+    if have_pc_and_race:
+        patients = [Patient.with_RACE(**kwargs)]
+    elif have_pc_and_nihss:
+        patients = [Patient.with_NIHSS(**kwards)]
+    else:
+        patients = [Patient.random(**kwargs) for _ in range(patient_count)]
+    return patients
 
 def run_model_defaul_dtn(
         times_file,
@@ -66,7 +81,7 @@ def run_model_defaul_dtn(
         (False, hospitals)
     ]  # false means use same DTN distribution for all hospitals
 
-    patients = [Patient.random(**kwargs) for _ in range(patient_count)]
+    patients = _instanstiate_patients(patient_count,**kwargs)
     sex = patients[0].sex
 
     times = data_io.get_times(times_file)
@@ -76,7 +91,6 @@ def run_model_defaul_dtn(
     if not res_name:
         res_name = results_name(base_dir, times_file, hospitals_file,
                                 fix_performance, simulation_count, sex)
-    first_pat_num = data_io.get_next_patient_number(res_name)
 
     if cores is False:
         pool = False
@@ -92,12 +106,12 @@ def run_model_defaul_dtn(
                         run_one_scenario,
                         (patient, point, these_times, hospital_list,
                          uses_hospital_performance, simulation_count,
-                         fix_performance, first_pat_num, pat_num, res_name))
+                         fix_performance, res_name))
                 else:
                     results = run_one_scenario(
                         patient, point, these_times, hospital_list,
                         uses_hospital_performance, simulation_count,
-                        fix_performance, first_pat_num, pat_num, res_name)
+                        fix_performance, res_name)
                 patient_results.append(results)
         if pool:
             to_fetch = tqdm(patient_results, desc='Map Points', leave=False)
@@ -107,7 +121,6 @@ def run_model_defaul_dtn(
     if pool:
         pool.close()
     return
-
 
 def run_model_real_data(
         times_file,
@@ -120,6 +133,7 @@ def run_model_real_data(
         base_dir='',  # default: current working directory
         res_name=None,
         locations=None,  # default: run for all location in times_file
+        patients=None,
         **kwargs):
     '''Run the model on the given map points for the given hospitals. The
         times file should be in data/travel_times and contain travel times to
@@ -132,7 +146,8 @@ def run_model_real_data(
     hospitals = data_io.get_hospitals(hospitals_file, dtn_file)
     hospital_lists = [(True, hospitals)] # True means using hospital data
 
-    patients = [Patient.random(**kwargs) for _ in range(patient_count)]
+    patients = _instanstiate_patients(patient_count,**kwargs)
+
     sex = patients[0].sex
 
     times = data_io.get_times(times_file)
@@ -142,8 +157,6 @@ def run_model_real_data(
     if not res_name:
         res_name = results_name(base_dir, times_file, hospitals_file,
                                 fix_performance, simulation_count, sex)
-
-    first_pat_num = data_io.get_next_patient_number(res_name)
 
     if cores is False:
         pool = False
@@ -159,12 +172,12 @@ def run_model_real_data(
                         run_one_scenario,
                         (patient, point, these_times, hospital_list,
                          uses_hospital_performance, simulation_count,
-                         fix_performance, first_pat_num, pat_num, res_name))
+                         fix_performance, res_name))
                 else:
                     results = run_one_scenario(
                         patient, point, these_times, hospital_list,
                         uses_hospital_performance, simulation_count,
-                        fix_performance, first_pat_num, pat_num, res_name)
+                        fix_performance, res_name)
                 patient_results.append(results)
         if pool:
             to_fetch = tqdm(patient_results, desc='Map Points', leave=False)
@@ -183,8 +196,6 @@ def run_one_scenario(patient,
                      uses_hospital_performance,
                      simulation_count,
                      fix_performance,
-                     first_pat_num,
-                     pat_num,
                      res_name=None):
     model = sm.StrokeModel(patient, hospital_list)
     model.set_times(these_times)
@@ -210,15 +221,18 @@ def run_one_scenario(patient,
 
     results = collections.OrderedDict()
     results['Location'] = point
-    results['Patient'] = first_pat_num + pat_num
+    results['Patient'] = patient.pid
     results['Use Real DTN'] = uses_hospital_performance
     results['Varying Hospitals'] = not fix_performance
     results['PSC Count'] = len(model.primaries)
     results['CSC Count'] = len(model.comprehensives)
-    results['Sex'] = str(patient.sex)
+    results['Sex'] = 'male' if patient.sex == constants.Sex.MALE else 'female'
     results['Age'] = patient.age
     results['Symptoms'] = patient.symptom_time
-    results['RACE'] = patient.severity.score
+    if isinstance(patient.severity,severity.NIHSS):
+        results['NIHSS'] = patient.severity.score
+    else:
+        results['RACE'] = patient.severity.score
     cbc = these_results.counts_by_center
     cbc = {str(center): count for center, count in cbc.items()}
     results.update(cbc)
