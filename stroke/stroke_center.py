@@ -92,7 +92,7 @@ class TravelTimeDistribution:
         if self.no_traffic != self.traffic:
             val = np.random.uniform(self.no_traffic,self.traffic,n)
         else:
-            val = self.no_traffic
+            val = np.ones((n,))*self.no_traffic
         return val
 
     def isnan(self):
