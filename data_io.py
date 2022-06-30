@@ -4,6 +4,8 @@ Read input files to prepare for model runs
 import csv
 import os
 import warnings
+
+from regex import P
 import stroke.stroke_center as sc
 import pandas as pd
 import gc
@@ -24,51 +26,57 @@ def get_hospitals(hospital_file, dtn_file=None):
     '''
     # load spreadsheets
     hospitals = paths.load_hospital(hospital_file=hospital_file)
-    if dtn_file:
+    if dtn_file: # load treatment times
         dtn = paths.load_dtn(dtn_file)
-        hospitals_dtn = hospitals.join(dtn, how='left', rsuffix='_dtn')
-    else:
+        hospitals_dtn = hospitals.join(dtn, how='left', rsuffix='_dtn') # merge hospital and dtn data
+    else: # no treatment times
         # use default dtn, assign NaN to treatment time columns
         hospitals_dtn = hospitals.assign(**dict(
             zip(paths.DTN_COLS, [np.nan] * len(paths.DTN_COLS)))).assign(
                 **dict(zip(paths.DTP_COLS, [np.nan] * len(paths.DTP_COLS))))
-
+   
+    # Initialize dictionaries
     primaries = {}
     destinations = {}
     comprehensives = {}
+
     for center_id, row in hospitals_dtn.iterrows():
         center_type = row['CenterType']
-        name = str(center_id)
-        long_name = f'Center {center_id}'
-        dtn_availability = row[paths.DTN_COLS].notna().all()
-        if dtn_availability:
+        name = str(center_id) # primary or comprehensive
+        long_name = f'Center {center_id}' # hosp_key
+        dtn_availability = row[paths.DTN_COLS].notna().all() # check if IVTPA data exists
+        if dtn_availability: # if data exists
             if center_type == 'Primary':
-                generic_distribution = sc.PRIMARY_DIST
+                generic_distribution = sc.PRIMARY_DIST # HospitalTimeDistribution(47, 61, 83)
             else:
-                generic_distribution =  sc.COMP_DIST
+                generic_distribution =  sc.COMP_DIST # HospitalTimeDistribution(39, 52, 70)
+            # Real hospital performance for DTN: requires hospital data and generic distribution
             dtn_dist = sc.HospitalTimeDistributionHybrid(
                 float(row[paths.DTN_COLS[0]]), float(row[paths.DTN_COLS[1]]),
                 float(row[paths.DTN_COLS[2]]), float(row[paths.DTN_COLS[3]]),
                 generic_distribution)
-        else:
+        else: # no dtn data, use generic distributions only
             if center_type == 'Primary':
-                dtn_dist = sc.PRIMARY_DIST
+                dtn_dist = sc.PRIMARY_DIST # HospitalTimeDistribution(47, 61, 83)
             else:
-                dtn_dist = sc.COMP_DIST
+                dtn_dist = sc.COMP_DIST # HospitalTimeDistribution(39, 52, 70)
+        
+        # DTP distribution for comprehensive centers only
         if center_type == 'Comprehensive':
             dtp_availability = row[paths.DTP_COLS].notna().all()
-            if dtp_availability:
-                generic_distribution = sc.DTP_DIST
+            if dtp_availability: # if dtp data exists for each hospital
+                generic_distribution = sc.DTP_DIST # HospitalTimeDistribution(83, 145, 192)
                 dtp_dist = sc.HospitalTimeDistributionHybrid(
                     float(row[paths.DTP_COLS[0]]), float(
                         row[paths.DTP_COLS[1]]), float(row[paths.DTP_COLS[2]]),
                     float(row[paths.DTP_COLS[3]]),
                     generic_distribution)
-            else:
+            else: # no dtp data, just use generic distribution
                 dtp_dist = sc.DTP_DIST
-        else:
+        else: # no dtp distribution for primary centers
             dtp_dist = None
 
+        # Create instance of new class: StrokeCenter that contains the hospital name and distributions
         if center_type == 'Comprehensive':
             comp = sc.StrokeCenter(
                 long_name,
@@ -77,37 +85,34 @@ def get_hospitals(hospital_file, dtn_file=None):
                 center_id,
                 dtn_dist=dtn_dist,
                 dtp_dist=dtp_dist)
-            comprehensives[center_id] = comp
+            comprehensives[center_id] = comp # add to dictionary
         elif center_type == 'Primary':
-            try:
+            try: # test block of code for errors
                 transfer_id = row['destination_KEY']
                 transfer_time = float(row['transfer_time'])
-                destinations[center_id] = (transfer_id, transfer_time)
+                destinations[center_id] = (transfer_id, transfer_time) # add to dictionary
             except ValueError:
                 warnings.warn(f'No transfer destination for {long_name}')
-            except:
-                # old structure
-                try:
-                    transfer_id = int(float(row['destinationID']))
-                    transfer_time = float(row['transfer_time'])
-                    destinations[center_id] = (transfer_id, transfer_time)
-                except ValueError:
-                    warnings.warn(f'No transfer destination for {long_name}')
+
             prim = sc.StrokeCenter(
                 long_name,
                 name,
                 sc.CenterType.PRIMARY,
                 center_id,
                 dtn_dist=dtn_dist)
-            primaries[center_id] = prim
+            primaries[center_id] = prim # add to dictionary
 
-    for primary_id, (transfer_id, transfer_time) in destinations.items():
-        prim = primaries[primary_id]
-        transfer_destination = comprehensives[transfer_id]
-        prim.add_transfer_destination(transfer_destination, transfer_time)
+    # Transfer destinations to comprehensive center from primary center
+    # Primary center id is the dictionary key
+    for primary_id, (transfer_id, transfer_time) in destinations.items(): # iterate through dictionary
+        prim = primaries[primary_id] # get info about primary center
+        transfer_destination = comprehensives[transfer_id] # get info about comprehensive destination center
+        # Add attribute to primary center for transfer destination: comprehensive hospital key and transfer time
+        prim.add_transfer_destination(transfer_destination, transfer_time) # function of StrokeCenter class
 
+    # Returns list of StrokeCenter classes for each primary and comprehensive center
+    # Attributes contain name, distribution, etc for each center
     return list(primaries.values()) + list(comprehensives.values())
-
 
 def get_times(times_file):
     '''
@@ -117,7 +122,7 @@ def get_times(times_file):
         formatted like `data/travel_times/Demo.csv`.
     '''
     def _parse_time(time_val):
-        if ',' in time_val:
+        if ',' in time_val: # two travel times
             time_arr = [float(t.strip()) for t in time_val.split(',')]
             if len(time_arr) != 2:
                 err_msg = 'Time value needs to be in format of'
@@ -127,12 +132,12 @@ def get_times(times_file):
         else:
             val = float(time_val)
             return [val,val]
+    
+    # Read in travel times file
     times = pd.read_csv(times_file,dtype=str,low_memory=False).set_index('LOC_ID')
     times = times.astype(str)
     times = times.applymap(_parse_time)
-    return times.to_dict('index')
-
-
+    return times.to_dict('index') # returns a dictionary
 
 def get_next_patient_number(results_file):
     '''

@@ -41,25 +41,31 @@ class StrokeModel:
             primaries and comprehensives to use these times.
         Each time value must be a list of [no_traffic_time,traffic_time]
         '''
-        for center in self._hospitals:
+        for center in self._hospitals: # iterate through each hospital class instance
             center_id = str(center.center_id)
             if center_id in times:
-                center.time_dist = sc.TravelTimeDistribution(*times[center_id])
+                center.time_dist = sc.TravelTimeDistribution(*times[center_id]) # input: [min_time, max_time]
             else:
                 center.time_dist = None
-
 
     def run(self, n=1000, add_time_uncertainty=True, add_lvo_uncertainty=True,
             fix_performance=False):
         """Run the model"""
-        costs.Costs.inflate(2016)
+        costs.Costs.inflate(2016) # what year to inflate costs
 
+        # Acute ischemic stroke, model times
+        # Give patient profile and list of potential hospital destinations
+        # n = number of randomized simulations
+        # Generates intra-hospital times, onset to treatment times, probability of LVO
         ais_times = times.IschemicTimes(self._patient, self.hospitals, n,
                                         add_time_uncertainty,
                                         add_lvo_uncertainty,
                                         fix_performance)
+        
+        # Stores times to generate outcome distributions
         ais_model = ais_outcomes.IschemicModel(ais_times)
-        outcomes = ais_model.run_all_strategies()
+        # Get all possible strategies and their outcomes: primary, drip and ship, comprehensive
+        outcomes = ais_model.run_all_strategies() # output Outcome object
         markov = cohort.Population(self._patient, outcomes)
         markov.analyze()
         return results.Results(markov),markov,ais_times

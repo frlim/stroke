@@ -86,7 +86,7 @@ class IschemicTimes:
         Get a list of strategies of the appropriate kind, in the same
             order the strategies appear in onset to treatment time arrays.
         """
-        if strategy_kind in self._strategies:
+        if strategy_kind in self._strategies: # starts off empty
             return self._strategies[strategy_kind]
 
         if strategy_kind is constants.StrategyKind.COMPREHENSIVE:

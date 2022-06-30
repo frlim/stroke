@@ -74,10 +74,10 @@ class IschemicModel:
         Compute outcome for going only to the primary center, for each
             primary center.
         """
-        p_good = self._get_p_good(self.times.onset_needle_primary)
+        p_good = self._get_p_good(self.times.onset_needle_primary) # probability of a good outcome
         p_tpa = 1
         p_evt = 0
-        p_transfer = 0
+        p_transfer = 0 # no transfer, this is handled in run_drip_and_ship
         strategies = self.times.get_strategies(StrategyKind.PRIMARY)
 
         return Outcome(p_good, p_tpa, p_evt, p_transfer, strategies)

@@ -10,11 +10,7 @@ from stroke.patient import Patient
 from stroke import severity,constants,stroke_model as sm
 # import stroke.stroke_model as sm
 import numpy as np
-try:
-    get_ipython
-    from tqdm import tqdm_notebook as tqdm
-except NameError:
-    from tqdm import tqdm
+from tqdm import tqdm
 import paths
 from pathlib import Path
 
@@ -23,6 +19,7 @@ NON_COUNT_COLS = [
     'Sex', 'Age', 'Symptoms', 'RACE'
 ]
 
+NUM_CORES = 2
 
 def results_name(base_dir, times_file, hospitals_file, fix_performance,
                  simulation_count, sex):
@@ -46,14 +43,15 @@ def _instanstiate_patients(patient_count,**kwargs):
                       patient_characteristics).all()
     have_pc_and_nihss = np.isin(['age','sex','time_since_symptoms','nihss'],
                       patient_characteristics).all()
-    if have_pc_and_race:
+    if have_pc_and_race: # not used
         patients = [Patient.with_RACE(**kwargs)]
-    elif have_pc_and_nihss:
-        patients = [Patient.with_NIHSS(**kwards)]
-    else:
+    elif have_pc_and_nihss: # not used
+        patients = [Patient.with_NIHSS(**kwargs)]
+    else: # each patient generated with this function
         patients = [Patient.random(**kwargs) for _ in range(patient_count)]
-    return patients
+    return patients # returns a list of one patient of the Patient class
 
+# Run base version of the model: no hospital performance data
 def run_model_defaul_dtn(
         times_file,
         hospitals_file,
@@ -122,6 +120,9 @@ def run_model_defaul_dtn(
         pool.close()
     return
 
+# Runs enhanced version of the model: including hospital performance data
+# **kwargs = keyword arguments, allows any number of keyword arguments
+# a keyword argument has a name attached to the variable, think of kwargs like a dictionary
 def run_model_real_data(
         times_file,
         hospitals_file,
@@ -134,7 +135,7 @@ def run_model_real_data(
         res_name=None,
         locations=None,  # default: run for all location in times_file
         patients=None,
-        **kwargs):
+        **kwargs): 
     '''Run the model on the given map points for the given hospitals. The
         times file should be in data/travel_times and contain travel times to
         appropriate hospitals. The hospitals file should be in data/hospitals
@@ -143,37 +144,49 @@ def run_model_real_data(
                     constant
         Also need dtn_file here to use real hospital performance data
     '''
-    hospitals = data_io.get_hospitals(hospitals_file, dtn_file)
+    hospitals = data_io.get_hospitals(hospitals_file, dtn_file) # Returns list of each center with its attributes
     hospital_lists = [(True, hospitals)] # True means using hospital data
 
+    # Generates list of Patient class (contains 1 patient)
+    # Attributes: pid, sex, age, symptom_time, severity
     patients = _instanstiate_patients(patient_count,**kwargs)
 
     sex = patients[0].sex
-
+    # Times is a dictionary of dictionary
+    # Main key = location id (L#), inner key = hopsital key (K#), value = [min_time,  max_time]
     times = data_io.get_times(times_file)
-    if locations:  # Not none
+    
+    if locations:  # Not none, run a subset of locations
+        # Subset times dictionary to just locations we are running
         times = {loc: time for loc, time in times.items() if loc in locations}
 
-    if not res_name:
-        res_name = results_name(base_dir, times_file, hospitals_file,
-                                fix_performance, simulation_count, sex)
+    # if not res_name: # doesn't run
+    #     res_name = results_name(base_dir, times_file, hospitals_file,
+    #                             fix_performance, simulation_count, sex)
 
-    if cores is False:
+    # Determines multiprocessing run or not
+    if cores is False: # run on a single core, no multiprocessing
         pool = False
     else:
-        pool = mp.Pool(mp.cpu_count()-1)
+        pool = mp.Pool(NUM_CORES)
+
+    # Runs for one patient: patients is list of one patient
+    # Enumerate: (0, patient0)
+    # Desc = description of progress bar
     for pat_num, patient in enumerate(tqdm(patients, desc='Patients')):
         patient_results = []
-        for point, these_times in tqdm(
+        for point, these_times in tqdm( # point = location, these_times = hospital: [min_time, max_time]
                 times.items(), desc='Map Points', leave=False):
+            # uses_hospital_performance = TRUE/FALSE
+            # hospital_list = list of hospital classes
             for uses_hospital_performance, hospital_list in hospital_lists:
-                if pool:
+                if pool: # multiprocessing
                     results = pool.apply_async(
                         run_one_scenario,
                         (patient, point, these_times, hospital_list,
                          uses_hospital_performance, simulation_count,
                          fix_performance, res_name))
-                else:
+                else: # no multiprocessing
                     results = run_one_scenario(
                         patient, point, these_times, hospital_list,
                         uses_hospital_performance, simulation_count,
@@ -188,7 +201,6 @@ def run_model_real_data(
         pool.close()
     return
 
-
 def run_one_scenario(patient,
                      point,
                      these_times,
@@ -197,16 +209,22 @@ def run_one_scenario(patient,
                      simulation_count,
                      fix_performance,
                      res_name=None):
-    model = sm.StrokeModel(patient, hospital_list)
-    model.set_times(these_times)
-    if str(simulation_count) == 'auto':
+    '''Called in run_model_real_data() and run_model_defaul_dtn()'''
+    # model attributes: patient, hospitals, threshold_ICER
+    # hospital_list = list of hospital classes
+    model = sm.StrokeModel(patient, hospital_list) # create instance of StrokeModel class
+    # these_times = dictionary of each hospital key with values [min_time, max_time]
+    model.set_times(these_times) # sets attributes no_traffic and traffic
+    
+    if str(simulation_count) == 'auto': # automatic mode, uses convergence to get number of simulations
         model_run = model.run_new
-    else:
+    else: # we specify number of simulations with a parameter
         try:
             simulation_count = int(simulation_count)
             model_run = model.run
         except ValueError:
             raise Exception("Num of simulation is not an integer!")
+            
     these_results, markov_results, ais_times = model_run(
         n=simulation_count, fix_performance=fix_performance)
     if res_name:
@@ -261,10 +279,11 @@ def parse_extra_inputs(args):
 
 
 def main(args):
+    '''Runs stroke markov model'''
     times_file = args.times_file
     hospitals_file = args.hospital_file
-    patient_count = args.patients
-    simulation_count = args.simulations
+    patient_count = args.patients # number of patients to run at each location
+    simulation_count = args.simulations # number of simulations
     kwargs = parse_extra_inputs(args)
 
     # if args.base_dir:
@@ -301,10 +320,11 @@ def main(args):
 
 
 def main_default_dtn(args):
+    '''Used in sensitivity analysis'''
     times_file = args.times_file
     hospitals_file = args.hospital_file
-    patient_count = args.patients
-    simulation_count = args.simulations
+    patient_count = args.patients # number of patients to run at each location
+    simulation_count = args.simulations # number of simulations
     kwargs = parse_extra_inputs(args)
 
     # if args.base_dir:
@@ -341,10 +361,10 @@ def main_default_dtn(args):
 
 
 if __name__ == '__main__':
-    p_default = 2
-    s_default = 1000
+    p_default = 2 # number of patients to run at each location
+    s_default = 1000 # number of simulations
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser() # instance of a class
     parser.add_argument(
         'hospital_file', help='full path to file with hospital information')
     parser.add_argument(

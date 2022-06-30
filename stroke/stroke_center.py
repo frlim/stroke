@@ -1,5 +1,6 @@
 """
 Information about a stroke center.
+Defines distributions for each stroke center type
 """
 import enum
 import numpy as np
@@ -11,7 +12,7 @@ class CenterType(enum.IntEnum):
 
 
 class HospitalTimeDistribution:
-
+    '''Input: 3 values (first quartile, median, third quartile'''
     def __init__(self, first_quartile, median, third_quartile):
         self.first_quartile = first_quartile
         self.median = median
