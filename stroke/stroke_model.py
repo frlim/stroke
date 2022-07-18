@@ -64,10 +64,17 @@ class StrokeModel:
         
         # Stores times to generate outcome distributions
         ais_model = ais_outcomes.IschemicModel(ais_times)
+        
         # Get all possible strategies and their outcomes: primary, drip and ship, comprehensive
-        outcomes = ais_model.run_all_strategies() # output Outcome object
+        # Runs functions from IschemicModel class
+        outcomes = ais_model.run_all_strategies() # output Outcome object of all strategies
+        
+        # Stores patient information, can be run as markov to get LY, QALYs, costs, etc.
         markov = cohort.Population(self._patient, outcomes)
+        # Analyze runs markov on patient, generating costs and qalys for each run/hospital
         markov.analyze()
+
+        # results.Results tabulates output of markov.analyze()
         return results.Results(markov),markov,ais_times
 
     def _check_convergence(self,markov_results,n_sim,old_df_cbc=None):

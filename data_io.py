@@ -170,10 +170,19 @@ def write_detailed_markov_outcomes(markov, fileprefix, point, times=None,
     param_list[-2] = param_list[-1]
     param_list[-1] = tmp_version
     filename_prefix = '_'.join(param_list)
+
+    # List of all strategies
     strategies = [str(strategy) for strategy in markov.strategies]
+    print('k233', strategies.index('Comprehensive to K233 (CSC)'))
+    print('k199', strategies.index('Comprehensive to K199 (CSC)'))
+
     qalys_df = pd.DataFrame(markov.qalys, columns=strategies)
+    print(qalys_df)
+
+
     costs_df = pd.DataFrame(markov.costs, columns=strategies)
     lys_df = pd.DataFrame(markov.lys, columns=strategies)
+
     qalys_df['Variable'] = 'QALY'
     costs_df['Variable'] = 'Cost'
     lys_df['Variable'] = 'LY'

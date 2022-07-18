@@ -74,38 +74,43 @@ def run_model_defaul_dtn(
         from a uniform distribution
         For now, use fix_performance = True to make it fair for the hospitals
     '''
-    hospitals = data_io.get_hospitals(hospitals_file)
+    hospitals = data_io.get_hospitals(hospitals_file) # list of all hospitals and their characteristics
     hospital_lists = [
         (False, hospitals)
     ]  # false means use same DTN distribution for all hospitals
 
-    patients = _instanstiate_patients(patient_count,**kwargs)
+    patients = _instanstiate_patients(patient_count,**kwargs) # list of one patient and their characteristics
     sex = patients[0].sex
 
-    times = data_io.get_times(times_file)
-    if locations:  # Not none
-        times = {loc: time for loc, time in times.items() if loc in locations}
+    times = data_io.get_times(times_file) # dictionary: main key = location, inner key = hospital, value = travel time
+    if locations:
+        # Create dictionary times, key = location, value = hospital for all locations specified in run_here.py
+        times = {loc: time for loc, time in times.items() if loc in locations} # dictionary list comprehension
 
-    if not res_name:
+    if not res_name: # not used and specified in run_here.py, defines output file name
         res_name = results_name(base_dir, times_file, hospitals_file,
                                 fix_performance, simulation_count, sex)
 
-    if cores is False:
+    if cores is False: # no multiprocessing
         pool = False
-    else:
-        pool = mp.Pool(mp.cpu_count()-1)
+    else: # multiprocessing
+        pool = mp.Pool(NUM_CORES)
+
+    # Runs for one patient: pat_num = 0 and patient = Patient class    
     for pat_num, patient in enumerate(tqdm(patients, desc='Patients')):
         patient_results = []
-        for point, these_times in tqdm(
+        # points = locations, these_times = dictionary of hospital keys with values as travel times
+        for point, these_times in tqdm( 
                 times.items(), desc='Map Points', leave=False):
+            # uses_hospital_performance = False, hospital_list = list of hospitals
             for uses_hospital_performance, hospital_list in hospital_lists:
-                if pool:
+                if pool: # multiprocessing
                     results = pool.apply_async(
                         run_one_scenario,
                         (patient, point, these_times, hospital_list,
                          uses_hospital_performance, simulation_count,
                          fix_performance, res_name))
-                else:
+                else: # no multiprocessing
                     results = run_one_scenario(
                         patient, point, these_times, hospital_list,
                         uses_hospital_performance, simulation_count,
@@ -192,11 +197,14 @@ def run_model_real_data(
                         uses_hospital_performance, simulation_count,
                         fix_performance, res_name)
                 patient_results.append(results)
-        if pool:
+        
+        if pool: # aggregate multiprocessing results
             to_fetch = tqdm(patient_results, desc='Map Points', leave=False)
             patient_results = [job.get() for job in to_fetch]
+        
         # Save after each patient in case we cancel or crash
         data_io.save_patient(res_name, patient_results, hospitals)
+    
     if pool:
         pool.close()
     return
@@ -216,23 +224,31 @@ def run_one_scenario(patient,
     # these_times = dictionary of each hospital key with values [min_time, max_time]
     model.set_times(these_times) # sets attributes no_traffic and traffic
     
-    if str(simulation_count) == 'auto': # automatic mode, uses convergence to get number of simulations
+    if str(simulation_count) == 'auto': # automatic mode, uses convergence to get number of simulations (not used)
         model_run = model.run_new
-    else: # we specify number of simulations with a parameter
+    else: # we specify number of simulations with a parameter (simulation_count)
         try:
             simulation_count = int(simulation_count)
-            model_run = model.run
+            # model.run returns: results.Results(markov), markov, ais_times
+            model_run = model.run # runs StrokeModel instance
         except ValueError:
             raise Exception("Num of simulation is not an integer!")
-            
-    these_results, markov_results, ais_times = model_run(
+
+    # these_results = Results class, tabulated version of markov model
+    # markov_results = Population class
+    # ais_times = IschemicModel class
+    these_results, markov_results, ais_times = model_run( # separate into the 3 results
         n=simulation_count, fix_performance=fix_performance)
+
     if res_name:
         # output details of each simulation: Cost and QALY
         #dimension: simulation# -> row index,hospital-> columns
         # data_io.write_detailed_markov_outcomes(
         #     markov_results, res_name, point, times=ais_times,
         #     optimal_strategy= str(these_results.optimal_strategy), write = True)
+
+        # Optimal strategy marked with 'most C/E'
+        # Creates aggreated files, one for each location
         data_io.write_aggregated_markov_outcomes(
             markov_results, res_name, point, times=ais_times,
             optimal_strategy= str(these_results.optimal_strategy), write = True)

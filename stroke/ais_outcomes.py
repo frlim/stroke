@@ -78,7 +78,7 @@ class IschemicModel:
         p_tpa = 1
         p_evt = 0
         p_transfer = 0 # no transfer, this is handled in run_drip_and_ship
-        strategies = self.times.get_strategies(StrategyKind.PRIMARY)
+        strategies = self.times.get_strategies(StrategyKind.PRIMARY) # list of all strategy names
 
         return Outcome(p_good, p_tpa, p_evt, p_transfer, strategies)
 

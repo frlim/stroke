@@ -89,18 +89,25 @@ class IschemicTimes:
         if strategy_kind in self._strategies: # starts off empty
             return self._strategies[strategy_kind]
 
+        # Direct to comprehensive center strategy
         if strategy_kind is constants.StrategyKind.COMPREHENSIVE:
             constructor = strategy.Strategy.comprehensive
-            hospitals = self._comprehensives
+            hospitals = self._comprehensives # list of all comprehensive hospitals with travel time value
+        
+        # Direct to primary center strategy
         elif strategy_kind is constants.StrategyKind.PRIMARY:
             constructor = strategy.Strategy.primary
-            hospitals = self._primaries
+            hospitals = self._primaries # list of all primary hospitals with travel time value
+
+        # Drip at primary center and ship to comprehensive strategy
         elif strategy_kind is constants.StrategyKind.DRIP_AND_SHIP:
             constructor = strategy.Strategy.drip_and_ship
-            hospitals = self._primaries
+            hospitals = self._primaries # list of all primary hospitals with travel time value
+        
         else:
             raise ValueError(f'Unrecognized strategy kind {strategy_kind}')
 
+        # List of all strategies names: Primary to _, Comprehension to _, Drink and Ship _ to _ 
         strategies = [constructor(hospital) for hospital in hospitals]
         self._strategies[strategy_kind] = strategies
         return strategies

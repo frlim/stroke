@@ -26,7 +26,7 @@ class Population:
         self.strategies = ais_outcomes.strategies
         self.horizon = horizon
         self.ais_outcomes=ais_outcomes
-        self._break_into_states(ais_outcomes)
+        self._break_into_states(ais_outcomes) # starting states and costs based on stroke type and treatment
 
     def analyze(self):
         """
@@ -50,13 +50,15 @@ class Population:
             year costs.
         """
         call_population = 1
+        # Divide into types of strokes: all constants
         pop_mimic = call_population * constants.p_call_is_mimic()
         pop_hemorrhagic = call_population * constants.p_call_is_hemorrhagic()
         pop_ischemic = call_population - pop_mimic - pop_hemorrhagic
 
         # Get the mRS breakdown for AIS patients
-        ais_states = self.severity.break_up_ais_patients(ais_outcomes.p_good)
-
+        # Shape: num of simulations x number of strategies x 8 (number of states)
+        # Generate a state matrix for AIS patients given an array of probabilities of good outcomes
+        ais_states = self.severity.break_up_ais_patients(ais_outcomes.p_good) # ais_outcomes.p_good shape: num sims x num strategies
         # initialize the global state matrix with AIS patients adjusted for
         #   population of ischemic patients
         states = ais_states * pop_ischemic
@@ -74,7 +76,9 @@ class Population:
         # We assume that mimics are at gen pop (headache, migraine, etc.)
         states[:, :, States.GEN_POP] += pop_mimic
 
+        # states matrix size: num of simulations x number of strategies x 8 (number of states)
         self.states = states
+        print(self.states[0,66,:])
 
         # Get first year costs
         first_costs = costs.first_year_costs(hemorrhagic_states, ais_states)

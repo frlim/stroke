@@ -4,9 +4,11 @@
 
 import main
 from argparse import Namespace
-from stroke import constants
+from stroke import constants, patient
 import paths
 import pandas as pd
+
+PATIENT_IDS = [250] # list of patients we want to run model for, None if run everyone
 
 if __name__ == '__main__':
     # get file paths base on OS
@@ -14,11 +16,15 @@ if __name__ == '__main__':
     hospital_path = paths.HOSPITAL_PATH
     times_path = paths.TIMES_PATH
     #s_default - 'auto' for automatic mode or else enter an integer
-    s_default = 10000  #'auto', number of simulations
+    s_default = 100  #'auto', number of simulations = 10_000
     upper = 1 # unused parameter
 
     # Read in patient profiles/characteristics
-    patient_profiles = pd.read_csv(paths.PATIENT_PATH, index_col=0)
+    if PATIENT_IDS == None:
+        patient_profiles = pd.read_csv(paths.PATIENT_PATH, index_col=0)
+    else:
+        patient_profiles = pd.read_csv(paths.PATIENT_PATH, index_col=0)
+        patient_profiles = patient_profiles.filter(items = PATIENT_IDS, axis = 0)
 
     # Iterate through eac patient
     # id = index, profile = row
@@ -29,12 +35,12 @@ if __name__ == '__main__':
         # Define output file name
         res_name = str(
             res_name_prefix /
-            (f'times={times_path.stem}_hospitals={hospital_path.stem}_pid={id}_sex={sex_str}_age={age}'
+            (f'pid={id}_sex={sex_str}_age={age}'
             + f'_nihss={nihss}_symptom={time_since_symptoms}_nsim={s_default}_beAHA.csv')
         )
 
         # Determine which locations to run the patient for
-        locations = ['L298'] # or None to run all locations
+        locations = ['L0'] # or None to run all locations
         #locations = [f'L{i}' for i in range(500)]
 
         args = Namespace( # overrides parameters set in main.py
@@ -54,26 +60,26 @@ if __name__ == '__main__':
         print("Before AHA")
         main.run_model_defaul_dtn(**vars(args))
 
-        # Define output file name
-        res_name = str(
-            res_name_prefix /
-            (f'times={times_path.stem}_hospitals={hospital_path.stem}_pid={id}_sex={sex_str}_age={age}'
-            + f'_nihss={nihss}_symptom={time_since_symptoms}_nsim={s_default}_afAHA.csv')
-        )
-        args = Namespace( # overrides parameters set in main.py
-            patient_count=1,
-            simulation_count=s_default,
-            cores=None, #None: multicore, False: run single core
-            hospitals_file=str(hospital_path),
-            times_file=str(times_path),
-            pid=id,
-            sex=sex,
-            age=age,
-            nihss=nihss,
-            time_since_symptoms=time_since_symptoms,
-            locations=locations,
-            res_name=res_name)
-        # Run enhanced version of the model, including hospital performance
-        print("After AHA")
-        main.run_model_real_data(**vars(args))
+        # # Define output file name
+        # res_name = str(
+        #     res_name_prefix /
+        #     (f'pid={id}_sex={sex_str}_age={age}'
+        #     + f'_nihss={nihss}_symptom={time_since_symptoms}_nsim={s_default}_afAHA.csv')
+        # )
+        # args = Namespace( # overrides parameters set in main.py
+        #     patient_count=1,
+        #     simulation_count=s_default,
+        #     cores=None, #None: multicore, False: run single core
+        #     hospitals_file=str(hospital_path),
+        #     times_file=str(times_path),
+        #     pid=id,
+        #     sex=sex,
+        #     age=age,
+        #     nihss=nihss,
+        #     time_since_symptoms=time_since_symptoms,
+        #     locations=locations,
+        #     res_name=res_name)
+        # # Run enhanced version of the model, including hospital performance
+        # print("After AHA")
+        # main.run_model_real_data(**vars(args))
 

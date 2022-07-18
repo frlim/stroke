@@ -32,7 +32,7 @@ _data_path = Path('/Users/francescalim/OneDrive - cumc.columbia.edu/stroke_model
 # Door-to-needle times (sensitive data - hospitals de-identified)
 DTN_FILE = _data_path/'data/deidentified_DTN_master_v3.xlsx'
 # Directory to save model's output (need a lot of storage space)
-RES_NAME_PREFIX = _data_path/'output'
+RES_NAME_PREFIX = _data_path/'output_2022_07_18'
 # Path to travel times
 HOSPITAL_PATH = _data_path/'data/NY_MA_NJ_CT_NH_RI_ME_VT_n=10000_hospitals.csv'
 TIMES_PATH = _data_path/'data/NY_MA_NJ_CT_NH_RI_ME_VT_n=10000_traveltimes_2vals.csv'
